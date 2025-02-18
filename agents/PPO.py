@@ -52,7 +52,7 @@ class PPOAgent():
         dones = torch.tensor(dones, dtype=torch.float32).to(device)
 
         # Compute Value Targets
-        discounted_returns = compute_rewards_to_go(rewards, self.gamma)
+        discounted_returns = compute_rewards_to_go(rewards, self.gamma).reshape(-1, 1)
         state_values = self.value_network(states)
 
         # Compute Advantage and Normalize
