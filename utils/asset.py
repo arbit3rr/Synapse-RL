@@ -1,13 +1,18 @@
 import torch
 
+import torch
+
 def compute_rewards_to_go(rewards, gamma):
-    rewards_rav = rewards.ravel()
-    rewards_to_go = torch.zeros_like(rewards_rav, dtype=torch.float, device=rewards.device)
-    cumulative_reward = 0
-    for t in range(len(rewards_rav)-1, -1, -1):
-        cumulative_reward = rewards_rav[...,t] + gamma * cumulative_reward
+    # Flatten the rewards tensor. Make sure this is what you intend.
+    rewards_flat = rewards.ravel()
+    rewards_to_go = torch.zeros_like(rewards_flat, dtype=torch.float, device=rewards.device)
+    cumulative_reward = 0.0
+    # Loop backwards to compute rewards-to-go
+    for t in range(len(rewards_flat) - 1, -1, -1):
+        cumulative_reward = rewards_flat[t] + gamma * cumulative_reward
         rewards_to_go[t] = cumulative_reward
     return rewards_to_go.reshape(rewards.shape)
+
 
 def map_to_range(action, range):
     min_val, max_val = range
