@@ -1,18 +1,17 @@
 import torch
 
-import torch
-
-def compute_rewards_to_go(rewards, gamma):
-    # Flatten the rewards tensor. Make sure this is what you intend.
+def compute_rewards_to_go(rewards, dones, gamma):
+    returns = []
+    running_return = 0
     rewards_flat = rewards.ravel()
-    rewards_to_go = torch.zeros_like(rewards_flat, dtype=torch.float, device=rewards.device)
-    cumulative_reward = 0.0
-    # Loop backwards to compute rewards-to-go
-    for t in range(len(rewards_flat) - 1, -1, -1):
-        cumulative_reward = rewards_flat[t] + gamma * cumulative_reward
-        rewards_to_go[t] = cumulative_reward
-    return rewards_to_go.reshape(rewards.shape)
-
+    dones_flat = dones.ravel()
+    # Iterate backwards over rewards and dones
+    for reward, done in zip(reversed(rewards_flat), reversed(dones_flat)):
+        if done:
+            running_return = 0  # Reset at end of trajectory
+        running_return = reward + gamma * running_return
+        returns.insert(0, running_return)
+    return np.array(returns).reshape(rewards.shape)
 
 def map_to_range(action, range):
     min_val, max_val = range
