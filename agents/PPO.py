@@ -116,14 +116,15 @@ class PPOAgent():
                 next_state, reward, done, _, info = env.step(mapped_action)
                 # store in memory
                 self.memory.push([state, action_log_prob, reward, done])
-                # train agent
-                self.learn()
                 state = next_state
                 score += reward
                 length += 1
 
-            # Update Old Policy
-            self.old_policy.load_state_dict(self.new_policy.state_dict())
+            if episode%5==0:
+                # train agent
+                for i in range(5): self.learn()
+                # Update Old Policy
+                self.old_policy.load_state_dict(self.new_policy.state_dict())
 
             # log episode info
             self.writer.log_scalar("Episode/Return", score, episode)
