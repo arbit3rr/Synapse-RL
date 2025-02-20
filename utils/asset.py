@@ -11,7 +11,7 @@ def compute_rewards_to_go(rewards, dones, gamma):
             running_return = 0  # Reset at end of trajectory
         running_return = reward + gamma * running_return
         returns.insert(0, running_return)
-    return np.array(returns).reshape(rewards.shape)
+    return torch.tensor(returns).reshape(rewards.shape)
 
 def map_to_range(action, range):
     min_val, max_val = range
