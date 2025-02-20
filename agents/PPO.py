@@ -86,9 +86,6 @@ class PPOAgent():
         total_policy_loss.backward()
         self.policy_optimizer.step()
 
-       # Update Old Policy
-        self.old_policy.load_state_dict(self.new_policy.state_dict())
-
         # write loss values
         self.writer.log_scalar("Loss/Policy", policy_loss, self.iter)
         self.writer.log_scalar("Loss/Entropy", entropy_loss, self.iter)
@@ -119,11 +116,15 @@ class PPOAgent():
                 next_state, reward, done, _, info = env.step(mapped_action)
                 # store in memory
                 self.memory.push([state, action_log_prob, reward, done])
+                # train agent
+                self.learn()
                 state = next_state
                 score += reward
                 length += 1
-            # train agent
-            self.learn()
+
+            # Update Old Policy
+            self.old_policy.load_state_dict(self.new_policy.state_dict())
+
             # log episode info
             self.writer.log_scalar("Episode/Return", score, episode)
             self.writer.log_scalar("Episode/Length", length, episode)
