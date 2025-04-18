@@ -1,8 +1,8 @@
 import torch
 import torch.optim as optim
 import torch.nn.functional as F
-import numpy as np
-from models.nn import GaussianPolicyNetwork, ValueNetwork
+from models.policy import GaussianPolicyNetwork
+from models.value import ValueNetwork
 from utils.asset import map_to_range, np_to_torch, torch_to_np
 from utils.buffer import ReplayBuffer
 from utils.plot import plot_return
@@ -12,7 +12,7 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 
 class PPOAgent:
     def __init__(self, state_size, action_size, action_range, hidden_dim=[128], 
-                 gamma=0.99, lr=3e-4, clip_ratio=0.2, buffer_size=1e5, batch_size=64, n_trajectories=3):
+                 gamma=0.99, lr=3e-4, clip_ratio=0.2, buffer_size=2e4, batch_size=256):
         self.state_size = state_size
         self.action_size = action_size
         self.action_range = action_range
@@ -20,8 +20,8 @@ class PPOAgent:
         self.lr = lr
         self.clip_ratio = clip_ratio
         self.batch_size = batch_size
-        self.memory = ReplayBuffer(int(buffer_size))
-        self.n_trajectories = n_trajectories
+        self.memory = ReplayBuffer(int(1e5))
+        self.buffer_size = buffer_size
 
         # Actor (policy)
         self.new_policy = GaussianPolicyNetwork(state_size, action_size, hidden_dim).to(device)
@@ -44,10 +44,11 @@ class PPOAgent:
             return  # Avoid training if no data is available
         
         # Read from replay buffer
-        states, old_log_probs, rewards, dones, discounted_returns = self.memory.sample(self.batch_size)
+        states, actions, old_log_probs, rewards, dones, discounted_returns = self.memory.sample(self.batch_size)
 
         # Convert data to PyTorch tensors
         states = torch.tensor(states, dtype=torch.float32).to(device)
+        actions = torch.tensor(actions, dtype=torch.float32).to(device)
         old_log_probs = torch.tensor(old_log_probs, dtype=torch.float32).to(device)
         rewards = torch.tensor(rewards, dtype=torch.float32).to(device)
         dones = torch.tensor(dones, dtype=torch.float32).to(device)
@@ -67,7 +68,7 @@ class PPOAgent:
         advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-6)
 
         # Compute new log probs
-        _, action_log_probs, entropy = self.new_policy.select_action(states, return_entropy=True)
+        action_log_probs, entropy = self.new_policy.evaluate(states, actions)
         ratios = torch.exp(action_log_probs - old_log_probs.detach())
 
         # PPO Clipped Objective
@@ -97,9 +98,9 @@ class PPOAgent:
         for episode in range(episodes):
             score = 0
             length = 0
-            done = False
+            done, trunc = False, False
             state, _ = env.reset()
-            while not done:
+            while not (done or trunc):
                 # convert to tensor
                 state_t = np_to_torch(state).to(device)
                 # select action
@@ -110,15 +111,15 @@ class PPOAgent:
                 # map action to range
                 mapped_action = map_to_range(action, self.action_range)
                 # take action
-                next_state, reward, done, _, info = env.step(mapped_action)
+                next_state, reward, done, trunc, info = env.step(mapped_action)
                 # store in memory
-                self.memory.push([state, action_log_prob, reward, done])
+                self.memory.push([state, action, action_log_prob, reward, done])
                 state = next_state
                 score += reward
                 length += 1
 
-            if episode%self.n_trajectories==0:
-                self.memory.compute_rewards_to_go(reward_idx=2, done_idx=3, gamma=self.gamma)
+            if len(self.memory) > self.buffer_size:
+                self.memory.compute_rewards_to_go(reward_idx=3, done_idx=4, gamma=self.gamma)
                 # train agent
                 for i in range(len(self.memory)//self.batch_size): self.learn()
                 # clear memory

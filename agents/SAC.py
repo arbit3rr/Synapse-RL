@@ -2,7 +2,8 @@ import torch
 import torch.optim as optim
 import torch.nn.functional as F
 import numpy as np
-from models.nn import GaussianPolicyNetwork, QNetwork
+from models.policy import GaussianPolicyNetwork
+from models.value import QNetwork
 from utils.asset import map_to_range, np_to_torch, torch_to_np
 from utils.buffer import ReplayBuffer
 from utils.plot import plot_return
@@ -66,13 +67,12 @@ class SACAgent:
 
         # Compute Q targets
         with torch.no_grad():
-            next_actions, next_action_log_probs = self.actor.select_action(next_states)
             alpha = self.log_alpha.exp()  # Convert log_alpha to alpha
+            next_actions, next_action_log_probs = self.actor.select_action(next_states)
             q_values_next = torch.min(self.target_QNet1(next_states, next_actions), 
                                       self.target_QNet2(next_states, next_actions)) - alpha * next_action_log_probs
             q_targets = rewards + (self.gamma * q_values_next * (1 - dones))
-
-        q_targets = q_targets.detach()
+            q_targets = q_targets.detach()
 
         # Update Q1
         q1_values = self.QNet1(states, actions)
@@ -121,15 +121,15 @@ class SACAgent:
 
     def evaluate(self, env):
         state, _ = env.reset()
-        done = False
+        done, trunc = False, False
         episode_reward = 0
-        while not done:
+        while not (done or trunc):
             # Use the policy to select an action (without exploration)
             state_t = np_to_torch(state).to(device)
             action_t, _ = self.actor.select_action(state_t, deterministic=True)
             action = torch_to_np(action_t)
             mapped_action = map_to_range(action, self.action_range)
-            next_state, reward, done, _, _ = env.step(mapped_action)
+            next_state, reward, done, trunc, _ = env.step(mapped_action)
             episode_reward += reward
             state = next_state
 
@@ -144,9 +144,9 @@ class SACAgent:
         for episode in range(episodes):
             score = 0
             length = 0
-            done = False
+            done, trunc = False, False
             state, _ = env.reset()
-            while not done:
+            while not (done or trunc):
                 # convert to tensor
                 state_t = np_to_torch(state).to(device)
                 # select action
@@ -157,7 +157,7 @@ class SACAgent:
                 # map action to range
                 mapped_action = map_to_range(action, self.action_range)
                 # take action
-                next_state, reward, done, _, info = env.step(mapped_action)
+                next_state, reward, done, trunc, info = env.step(mapped_action)
                 # store in memory
                 self.memory.push([state, action, action_log_prob, reward, next_state,  done])
                 # train agent
