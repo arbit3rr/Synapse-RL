@@ -4,7 +4,6 @@ import torch.nn.functional as F
 import numpy as np
 from models.nn import GaussianPolicyNetwork, ValueNetwork
 from utils.asset import map_to_range, np_to_torch, torch_to_np
-from utils.asset import compute_rewards_to_go
 from utils.buffer import ReplayBuffer
 from utils.plot import plot_return
 from utils.logger import TensorboardWriter
@@ -12,15 +11,17 @@ from utils.logger import TensorboardWriter
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
 class PPOAgent:
-    def __init__(self, state_size, action_size, action_range, hidden_dim=[128], gamma=0.99, lr=3e-4, buffer_size=1e5, batch_size=256):
+    def __init__(self, state_size, action_size, action_range, hidden_dim=[128], 
+                 gamma=0.99, lr=3e-4, clip_ratio=0.2, buffer_size=1e5, batch_size=64, n_trajectories=3):
         self.state_size = state_size
         self.action_size = action_size
         self.action_range = action_range
         self.gamma = gamma
         self.lr = lr
+        self.clip_ratio = clip_ratio
         self.batch_size = batch_size
         self.memory = ReplayBuffer(int(buffer_size))
-        self.clip_ratio = 0.2
+        self.n_trajectories = n_trajectories
 
         # Actor (policy)
         self.new_policy = GaussianPolicyNetwork(state_size, action_size, hidden_dim).to(device)
@@ -116,10 +117,10 @@ class PPOAgent:
                 score += reward
                 length += 1
 
-            if episode%5==0:
-                self.memory.compute_rewards_to_go(reward_idx=2, done_idx=3, self.gamma)
+            if episode%self.n_trajectories==0:
+                self.memory.compute_rewards_to_go(reward_idx=2, done_idx=3, gamma=self.gamma)
                 # train agent
-                for i in range(5): self.learn()
+                for i in range(len(self.memory)//self.batch_size): self.learn()
                 # clear memory
                 self.memory.clear()
                 # Update Old Policy
