@@ -43,19 +43,17 @@ class PPOAgent:
             return  # Avoid training if no data is available
         
         # Read from replay buffer
-        states, old_log_probs, rewards, dones = self.memory.sample(None, return_all=True)
+        states, old_log_probs, rewards, dones, discounted_returns = self.memory.sample(self.batch_size)
 
         # Convert data to PyTorch tensors
         states = torch.tensor(states, dtype=torch.float32).to(device)
         old_log_probs = torch.tensor(old_log_probs, dtype=torch.float32).to(device)
         rewards = torch.tensor(rewards, dtype=torch.float32).to(device)
         dones = torch.tensor(dones, dtype=torch.float32).to(device)
-
-        # Compute Value Targets
-        discounted_returns = compute_rewards_to_go(rewards, dones, self.gamma).to(device) #.reshape(-1, 1) # check this
-        state_values = self.value_network(states)
+        discounted_returns = torch.tensor(discounted_returns, dtype=torch.float32).to(device)
 
         # Compute Value Loss
+        state_values = self.value_network(states)
         value_loss = F.mse_loss(discounted_returns, state_values)
 
         # Update Value Network
@@ -119,6 +117,7 @@ class PPOAgent:
                 length += 1
 
             if episode%5==0:
+                self.memory.compute_rewards_to_go(reward_idx=2, done_idx=3, self.gamma)
                 # train agent
                 for i in range(5): self.learn()
                 # clear memory
