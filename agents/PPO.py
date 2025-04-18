@@ -12,14 +12,14 @@ from utils.logger import TensorboardWriter
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
 class PPOAgent:
-    def __init__(self, state_size, action_size, action_range, hidden_dim=[128], gamma=0.99, lr=3e-4, buffer_size=1e5):
+    def __init__(self, state_size, action_size, action_range, hidden_dim=[128], gamma=0.99, lr=3e-4, buffer_size=1e5, batch_size=256):
         self.state_size = state_size
         self.action_size = action_size
         self.action_range = action_range
         self.gamma = gamma
         self.lr = lr
-        self.buffer_size = int(buffer_size)
-        self.memory = ReplayBuffer(self.buffer_size)
+        self.batch_size = batch_size
+        self.memory = ReplayBuffer(int(buffer_size))
         self.clip_ratio = 0.2
 
         # Actor (policy)
@@ -52,7 +52,7 @@ class PPOAgent:
         dones = torch.tensor(dones, dtype=torch.float32).to(device)
 
         # Compute Value Targets
-        discounted_returns = compute_rewards_to_go(rewards, dones, self.gamma) #.reshape(-1, 1) # check this
+        discounted_returns = compute_rewards_to_go(rewards, dones, self.gamma).to(device) #.reshape(-1, 1) # check this
         state_values = self.value_network(states)
 
         # Compute Value Loss
