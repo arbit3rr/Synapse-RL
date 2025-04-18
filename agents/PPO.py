@@ -11,7 +11,7 @@ from utils.logger import TensorboardWriter
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
-class PPOAgent():
+class PPOAgent:
     def __init__(self, state_size, action_size, action_range, hidden_dim=[128], gamma=0.99, lr=3e-4, buffer_size=1e5):
         self.state_size = state_size
         self.action_size = action_size
@@ -52,12 +52,8 @@ class PPOAgent():
         dones = torch.tensor(dones, dtype=torch.float32).to(device)
 
         # Compute Value Targets
-        discounted_returns = compute_rewards_to_go(rewards, dones, self.gamma) #.reshape(-1, 1)
+        discounted_returns = compute_rewards_to_go(rewards, dones, self.gamma) #.reshape(-1, 1) # check this
         state_values = self.value_network(states)
-
-        # Compute Advantage and Normalize
-        advantages = discounted_returns - state_values
-        advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-6)
 
         # Compute Value Loss
         value_loss = F.mse_loss(discounted_returns, state_values)
@@ -66,6 +62,10 @@ class PPOAgent():
         self.value_optimizer.zero_grad()
         value_loss.backward()
         self.value_optimizer.step()
+
+        # Compute Advantage and Normalize
+        advantages = discounted_returns - state_values
+        advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-6)
 
         # Compute new log probs
         _, action_log_probs, entropy = self.new_policy.select_action(states, return_entropy=True)
@@ -92,8 +92,6 @@ class PPOAgent():
         self.writer.log_scalar("Loss/Value", value_loss, self.iter)
         self.iter += 1
 
-        # clear memory
-        self.memory.clear()
 
     def train(self, env, episodes):
         returns = []
@@ -123,6 +121,8 @@ class PPOAgent():
             if episode%5==0:
                 # train agent
                 for i in range(5): self.learn()
+                # clear memory
+                self.memory.clear()
                 # Update Old Policy
                 self.old_policy.load_state_dict(self.new_policy.state_dict())
 
