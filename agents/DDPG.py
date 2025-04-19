@@ -2,7 +2,8 @@ import torch
 import torch.optim as optim
 import torch.nn.functional as F
 import numpy as np
-from models.nn import DeterministicPolicyNetwork, QNetwork
+from models.policy import DeterministicPolicyNetwork
+from models.value import QNetwork
 from utils.asset import map_to_range, np_to_torch, torch_to_np
 from utils.buffer import ReplayBuffer
 from utils.plot import plot_return

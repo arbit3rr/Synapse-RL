@@ -2,7 +2,7 @@ import torch
 import torch.optim as optim
 import torch.nn.functional as F
 import numpy as np
-from models.nn import DQNetwork
+from models.value import DQNetwork
 from utils.asset import np_to_torch, torch_to_np
 from utils.buffer import ReplayBuffer
 from utils.plot import plot_return

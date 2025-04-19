@@ -2,7 +2,7 @@ import torch
 import torch.optim as optim
 import torch.nn.functional as F
 import numpy as np
-from models.nn import CategoricalPolicyNetwork
+from models.policy import CategoricalPolicyNetwork
 from utils.asset import compute_rewards_to_go, np_to_torch
 from utils.plot import plot_return
 from utils.logger import TensorboardWriter
