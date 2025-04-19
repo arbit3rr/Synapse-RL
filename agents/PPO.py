@@ -44,7 +44,7 @@ class PPOAgent:
             return  # Avoid training if no data is available
         
         # Read from replay buffer
-        states, actions, old_log_probs, rewards, dones = self.memory.sample(self.batch_size, return_all=True)
+        states, actions, old_log_probs, rewards, dones = self.memory.sample(None, return_all=True)
 
         # Convert data to PyTorch tensors
         states = torch.tensor(states, dtype=torch.float32).to(device)
