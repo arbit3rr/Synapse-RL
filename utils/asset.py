@@ -24,12 +24,28 @@ def compute_rewards_to_go(rewards, dones, gamma):
         returns.insert(0, running_return)
     return torch.tensor(returns).reshape(rewards.shape)
 
+
+
 def compute_GAE(rewards, values, dones, gamma, lam):
-    deltas = rewards + gamma * values[1:] * (1 - dones[1:]) - values[:-1]
-    advantages = torch.zeros_like(rewards)
-    running_advantage = 0
-    for t in reversed(range(len(deltas))):
-        running_advantage = deltas[t] + gamma * lam * (1 - dones[t]) * running_advantage
-        advantages[t] = running_advantage
-    return advantages
+    T, D = rewards.shape
+    device = rewards.device
+    last_value = torch.zeros(1, 1)
+
+    values_pad = torch.cat([values, last_value], dim=0)
+
+    advantages = torch.zeros_like(rewards, device=device)
+    last_gae = torch.zeros(1, D, device=device)
+
+    for t in reversed(range(T)):
+        mask = 1.0 - dones[t]             # [1, D], zeroes out if done
+        delta = (
+            rewards[t]
+            + gamma * values_pad[t + 1] * mask
+            - values_pad[t]
+        )                                 # [1, D]
+        last_gae = delta + gamma * lam * mask * last_gae
+        advantages[t] = last_gae
+
+    returns = advantages + values
+    return advantages, returns
 

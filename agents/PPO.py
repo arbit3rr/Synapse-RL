@@ -3,7 +3,7 @@ import torch.optim as optim
 import torch.nn.functional as F
 from models.policy import GaussianPolicyNetwork
 from models.value import ValueNetwork
-from utils.asset import map_to_range, np_to_torch, torch_to_np
+from utils.asset import map_to_range, np_to_torch, torch_to_np, compute_GAE
 from utils.buffer import ReplayBuffer
 from utils.plot import plot_return
 from utils.logger import TensorboardWriter
@@ -44,7 +44,7 @@ class PPOAgent:
             return  # Avoid training if no data is available
         
         # Read from replay buffer
-        states, actions, old_log_probs, rewards, dones, discounted_returns = self.memory.sample(self.batch_size)
+        states, actions, old_log_probs, rewards, dones = self.memory.sample(self.batch_size, return_all=True)
 
         # Convert data to PyTorch tensors
         states = torch.tensor(states, dtype=torch.float32).to(device)
@@ -52,20 +52,20 @@ class PPOAgent:
         old_log_probs = torch.tensor(old_log_probs, dtype=torch.float32).to(device)
         rewards = torch.tensor(rewards, dtype=torch.float32).to(device)
         dones = torch.tensor(dones, dtype=torch.float32).to(device)
-        discounted_returns = torch.tensor(discounted_returns, dtype=torch.float32).to(device)
+
+        # Obtain value estimates
+        state_values = self.value_network(states)
+
+        advantages, discounted_returns = compute_GAE(rewards, state_values, dones, self.gamma, lam=0.95)
+        advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-6)
 
         # Compute Value Loss
-        state_values = self.value_network(states)
         value_loss = F.mse_loss(discounted_returns, state_values)
 
         # Update Value Network
         self.value_optimizer.zero_grad()
         value_loss.backward()
         self.value_optimizer.step()
-
-        # Compute Advantage and Normalize
-        advantages = discounted_returns - state_values
-        advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-6)
 
         # Compute new log probs
         action_log_probs, entropy = self.new_policy.evaluate(states, actions)
@@ -119,7 +119,6 @@ class PPOAgent:
                 length += 1
 
             if len(self.memory) > self.buffer_size:
-                self.memory.compute_rewards_to_go(reward_idx=3, done_idx=4, gamma=self.gamma)
                 # train agent
                 for i in range(len(self.memory)//self.batch_size): self.learn()
                 # clear memory
