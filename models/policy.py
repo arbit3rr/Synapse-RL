@@ -79,13 +79,12 @@ class GaussianPolicyNetwork(nn.Module):
         action_clipped = torch.clamp(action, -0.999, 0.999)  # Clip for numerical stability
         action_pre_tanh = torch.atanh(action_clipped)
         # Compute log probability of pre-tanh actions
-        log_prob_pre_tanh = normal_dist.log_prob(action_pre_tanh).sum(dim=-1)
+        log_prob = normal_dist.log_prob(action_pre_tanh).sum(dim=-1)
         # Adjust for tanh transformation
-        adjustment = torch.log(1 - action_clipped.pow(2) + 1e-6).sum(dim=-1)
-        log_probs = log_prob_pre_tanh - adjustment
+        log_prob -= torch.log(1 - action_clipped.pow(2) + 1e-6).sum(dim=-1, keepdim=True)                
         # Compute entropy
         entropy = normal_dist.entropy().sum(dim=-1)
-        return log_probs, entropy
+        return log_prob, entropy
 
 
 # Categorical Policy Network architecture

@@ -33,7 +33,7 @@ class PPOAgent:
 
         # Optimizers
         self.policy_optimizer = optim.Adam(self.new_policy.parameters(), lr=self.lr, weight_decay=1e-4)
-        self.value_optimizer = optim.Adam(self.value_network.parameters(), lr=self.lr, weight_decay=1e-4)
+        self.value_optimizer = optim.Adam(self.value_network.parameters(), lr=self.lr*10, weight_decay=1e-4)
 
         # Log writer
         self.writer = TensorboardWriter(log_dir="Logs/PPO", comment="PPO")
@@ -69,7 +69,7 @@ class PPOAgent:
 
         # Compute new log probs
         action_log_probs, entropy = self.new_policy.evaluate(states, actions)
-        ratios = torch.exp(action_log_probs - old_log_probs.detach())
+        ratios = torch.exp(action_log_probs - old_log_probs)
 
         # PPO Clipped Objective
         surr1 = ratios * advantages.detach()
