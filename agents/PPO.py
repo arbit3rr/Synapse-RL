@@ -4,7 +4,7 @@ import torch.nn.functional as F
 from models.policy import GaussianPolicyNetwork
 from models.value import ValueNetwork
 from utils.asset import map_to_range, np_to_torch, torch_to_np, compute_GAE
-from utils.buffer import ReplayBuffer
+from utils.buffer import RolloutBuffer
 from utils.plot import plot_return
 from utils.logger import TensorboardWriter
 
@@ -12,7 +12,7 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 
 class PPOAgent:
     def __init__(self, state_size, action_size, action_range, hidden_dim=[128], 
-                 gamma=0.99, lr=3e-4, clip_ratio=0.2, buffer_size=2e3, batch_size=256):
+                 gamma=0.99, lr=3e-4, clip_ratio=0.2, buffer_size=5e3, batch_size=256):
         self.state_size = state_size
         self.action_size = action_size
         self.action_range = action_range
@@ -20,7 +20,7 @@ class PPOAgent:
         self.lr = lr
         self.clip_ratio = clip_ratio
         self.batch_size = batch_size
-        self.memory = ReplayBuffer(int(1e5))
+        self.memory = RolloutBuffer(int(1e5))
         self.buffer_size = buffer_size
 
         # Actor (policy)
@@ -33,7 +33,7 @@ class PPOAgent:
 
         # Optimizers
         self.policy_optimizer = optim.Adam(self.new_policy.parameters(), lr=self.lr, weight_decay=1e-4)
-        self.value_optimizer = optim.Adam(self.value_network.parameters(), lr=self.lr*10, weight_decay=1e-4)
+        self.value_optimizer = optim.Adam(self.value_network.parameters(), lr=self.lr, weight_decay=1e-4)
 
         # Log writer
         self.writer = TensorboardWriter(log_dir="Logs/PPO", comment="PPO")
@@ -44,7 +44,7 @@ class PPOAgent:
             return  # Avoid training if no data is available
         
         # Read from replay buffer
-        states, actions, old_log_probs, rewards, dones = self.memory.sample(None, return_all=True)
+        states, actions, old_log_probs, rewards, dones = self.memory.sample(self.batch_size)
 
         # Convert data to PyTorch tensors
         states = torch.tensor(states, dtype=torch.float32).to(device)
