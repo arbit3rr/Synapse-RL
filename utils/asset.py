@@ -28,15 +28,14 @@ def compute_rewards_to_go(rewards, dones, gamma):
 
 
 
-def compute_GAE(rewards, values, dones, gamma, lam):
+def compute_GAE(rewards, values, next_values, dones, gamma, lam):
     T, D = rewards.shape
     device = rewards.device
-    last_value = torch.zeros(1, 1).to(device)
 
-    values_pad = torch.cat([values, last_value], dim=0)
+    values_pad = torch.cat([values, next_values[-1].unsqueeze(0)], dim=0)
     advantages = torch.zeros_like(rewards, device=device)
     last_gae = torch.zeros(1, D, device=device)
-    dones[-1] = 1
+    
     for t in reversed(range(T)):
         mask = 1.0 - dones[t]  # [1, D], zeroes out if done
         delta = (

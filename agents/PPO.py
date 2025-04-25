@@ -44,19 +44,21 @@ class PPOAgent:
             return  # Avoid training if no data is available
         
         # Read from replay buffer
-        states, actions, old_log_probs, rewards, dones = self.memory.sample(self.batch_size)
+        states, actions, old_log_probs, rewards, next_states, dones = self.memory.sample(self.batch_size)
 
         # Convert data to PyTorch tensors
         states = torch.tensor(states, dtype=torch.float32).to(device)
         actions = torch.tensor(actions, dtype=torch.float32).to(device)
         old_log_probs = torch.tensor(old_log_probs, dtype=torch.float32).to(device)
         rewards = torch.tensor(rewards, dtype=torch.float32).to(device)
+        next_states = torch.tensor(next_states, dtype=torch.float32).to(device)
         dones = torch.tensor(dones, dtype=torch.float32).to(device)
 
         # Obtain value estimates
         state_values = self.value_network(states)
+        with torch.no_grad(): next_state_values = self.value_network(next_states)
 
-        advantages, discounted_returns = compute_GAE(rewards, state_values, dones, self.gamma, lam=0.95)
+        advantages, discounted_returns = compute_GAE(rewards, state_values, next_state_values, dones, self.gamma, lam=0.95)
         advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-6)
 
         # Compute Value Loss
@@ -113,7 +115,7 @@ class PPOAgent:
                 # take action
                 next_state, reward, done, trunc, info = env.step(mapped_action)
                 # store in memory
-                self.memory.push([state, action, action_log_prob, reward, done])
+                self.memory.push([state, action, action_log_prob, reward, next_state, done])
                 state = next_state
                 score += reward
                 length += 1
