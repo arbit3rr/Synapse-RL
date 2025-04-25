@@ -22,7 +22,7 @@ One of the advantages of using Synapse-RL is its compatibility with gym-based en
 | `Actor Critic (A2C)` | Discrete |
 | `Deep Deterministic Policy Gradient (DDGP)` | Continuous |
 | `Soft Actor Critic (SAC)` | Continuous |
-| `Proximal Policy Optimization (PPO)` | - |
+| `Proximal Policy Optimization (PPO)` | Continuous |
 
 ### Tensorboard
 Synapse now supports tensorboard.
