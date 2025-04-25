@@ -12,7 +12,7 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 
 class PPOAgent:
     def __init__(self, state_size, action_size, action_range, hidden_dim=[128], 
-                 gamma=0.99, lr=3e-4, clip_ratio=0.2, buffer_size=5e3, batch_size=256):
+                 gamma=0.99, lr=3e-4, clip_ratio=0.2, buffer_size=2e3, batch_size=64):
         self.state_size = state_size
         self.action_size = action_size
         self.action_range = action_range

@@ -36,7 +36,7 @@ def compute_GAE(rewards, values, dones, gamma, lam):
     values_pad = torch.cat([values, last_value], dim=0)
     advantages = torch.zeros_like(rewards, device=device)
     last_gae = torch.zeros(1, D, device=device)
-
+    dones[-1] = 1
     for t in reversed(range(T)):
         mask = 1.0 - dones[t]  # [1, D], zeroes out if done
         delta = (
