@@ -1,16 +1,16 @@
 import torch
 import torch.optim as optim
 import torch.nn.functional as F
-from models.policy import GaussianPolicyNetwork
-from models.value import ValueNetwork
-from utils.asset import map_to_range, np_to_torch, torch_to_np, compute_GAE
-from utils.buffer import RolloutBuffer
-from utils.plot import plot_return
-from utils.logger import TensorboardWriter
+from ..network.policy import GaussianPolicyNetwork
+from ..network.value import ValueNetwork
+from ..utils.asset import map_to_range, np_to_torch, torch_to_np, compute_GAE
+from ..utils.buffer import RolloutBuffer
+from ..utils.plot import plot_return
+from ..utils.logger import TensorboardWriter
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
-class PPOAgent:
+class PPO:
     def __init__(self, state_size, action_size, action_range, hidden_dim=[128], 
                  gamma=0.99, lr=3e-4, clip_ratio=0.2, buffer_size=2e3, batch_size=64):
         self.state_size = state_size

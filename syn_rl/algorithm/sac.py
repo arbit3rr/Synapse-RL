@@ -2,16 +2,16 @@ import torch
 import torch.optim as optim
 import torch.nn.functional as F
 import numpy as np
-from models.policy import GaussianPolicyNetwork
-from models.value import QNetwork
-from utils.asset import map_to_range, np_to_torch, torch_to_np
-from utils.buffer import ReplayBuffer
-from utils.plot import plot_return
-from utils.logger import TensorboardWriter
+from ..network.policy import GaussianPolicyNetwork
+from ..network.value import QNetwork
+from ..utils.asset import map_to_range, np_to_torch, torch_to_np
+from ..utils.buffer import ReplayBuffer
+from ..utils.plot import plot_return
+from ..utils.logger import TensorboardWriter
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
-class SACAgent:
+class SAC:
     def __init__(self, state_size, action_size, action_range, hidden_dim=[128], 
                  alpha=0.1, gamma=0.99, lr=3e-4, tau=0.005, buffer_size=1e5, batch_size=256):
         self.state_size = state_size

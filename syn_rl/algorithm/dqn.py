@@ -2,16 +2,16 @@ import torch
 import torch.optim as optim
 import torch.nn.functional as F
 import numpy as np
-from models.value import DQNetwork
-from utils.asset import np_to_torch, torch_to_np
-from utils.buffer import ReplayBuffer
-from utils.plot import plot_return
-from utils.logger import TensorboardWriter
+from ..network.value import DQNetwork
+from ..utils.asset import np_to_torch, torch_to_np
+from ..utils.buffer import ReplayBuffer
+from ..utils.plot import plot_return
+from ..utils.logger import TensorboardWriter
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
 # Define the Deep Q-Learning agent
-class DQNAgent():
+class DQN:
     def __init__(self, state_size, action_size, hidden_dim=[128], gamma=0.99, epsilon=1.0, epsilon_min=0.05, epsilon_decay=0.995, lr=3e-4, tau=0.005, buffer_size=1e5, batch_size=256):
         self.state_size = state_size
         self.action_size = action_size

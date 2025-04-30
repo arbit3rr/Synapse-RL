@@ -7,11 +7,14 @@ def map_to_range(action, range):
     mapped_action = ((action + 1) / 2) * (max_val - min_val) + min_val
     return mapped_action
 
+
 def np_to_torch(x):
     return torch.tensor(x, dtype=torch.float32).unsqueeze(0)
 
+
 def torch_to_np(x):
     return x.squeeze(0).cpu().detach().numpy().ravel()
+
 
 def compute_rewards_to_go(rewards, dones, gamma):
     returns = []

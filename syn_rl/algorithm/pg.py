@@ -2,14 +2,14 @@ import torch
 import torch.optim as optim
 import torch.nn.functional as F
 import numpy as np
-from models.policy import CategoricalPolicyNetwork
-from utils.asset import compute_rewards_to_go, np_to_torch
-from utils.plot import plot_return
-from utils.logger import TensorboardWriter
+from ..network.policy import CategoricalPolicyNetwork
+from ..utils.asset import compute_rewards_to_go, np_to_torch
+from ..utils.plot import plot_return
+from ..utils.logger import TensorboardWriter
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
-class PolicyGradientAgent():
+class PolicyGradient:
     def __init__(self, state_size, action_size, hidden_dim=[128], gamma=0.99, lr=1e-3):
         self.state_size = state_size
         self.action_size = action_size

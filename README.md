@@ -33,14 +33,15 @@ tensorboard --logdir ./
 ### Inference
 ```python
 import gymnasium as gym
-from agents.PolicyGradient import PolicyGradientAgent
+from syn_rl import SAC
 
-# Initialize the CartPole environment and agent
-env = gym.make('CartPole-v1')
+
+# Initialize the Pendulum/MountainCar environment and agent
+env = gym.make('Pendulum-v1', g=9.81)
 state_size = env.observation_space.shape[0]
-action_size = env.action_space.n
-agent = PolicyGradientAgent(state_size, action_size)
-result = agent.train(env, episodes=2000)
+action_size = env.action_space.shape[0]
+agent = SAC(state_size, action_size, action_range=[env.action_space.low, env.action_space.high], hidden_dim=[128])
+result = agent.train(env, episodes=500)
 ```
 
 ### Citation
