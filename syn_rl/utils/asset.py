@@ -31,24 +31,48 @@ def compute_rewards_to_go(rewards, dones, gamma):
 
 
 
+# def compute_GAE(rewards, values, dones, gamma, lam):
+#     T, D = rewards.shape
+#     device = rewards.device
+#     advantages = torch.zeros_like(rewards, device=device)
+#     last_gae = torch.zeros(1, D, device=device)
+    
+#     for t in reversed(range(T)):
+#         mask = 1.0 - dones[t]  # [1, D], zeroes out if done
+#         delta = (
+#             rewards[t]
+#             + gamma * values[t + 1] * mask
+#             - values[t]
+#         )  # [1, D]
+#         last_gae = delta + gamma * lam * mask * last_gae
+#         advantages[t] = last_gae
+#     # vlues has one extra value at the end (for the last state)
+#     returns = advantages + values[:-1]
+#     return advantages, returns
+
+
 def compute_GAE(rewards, values, dones, gamma, lam):
     T, D = rewards.shape
     device = rewards.device
-
-    advantages = torch.zeros_like(rewards, device=device)
-    last_gae = torch.zeros(1, D, device=device)
     
-    for t in reversed(range(T)):
-        mask = 1.0 - dones[t]  # [1, D], zeroes out if done
-        delta = (
-            rewards[t]
-            + gamma * values[t + 1] * mask
-            - values[t]
-        )  # [1, D]
-        last_gae = delta + gamma * lam * mask * last_gae
-        advantages[t] = last_gae
-
-    # vlues has one extra value at the end (for the last state)
+    # Compute delta for all time steps
+    mask = 1.0 - dones  # [T, D]
+    delta = rewards + gamma * values[1:] * mask - values[:-1]  # [T, D]
+    
+    # Reverse for forward recurrence
+    delta_rev = delta.flip(0)  # [T, D]
+    c_rev = (gamma * lam * mask).flip(0)  # [T, D]
+    
+    # Initialize output
+    advantages_rev = torch.zeros_like(rewards, device=device)  # [T, D]
+    advantages_rev[0] = delta_rev[0]
+    
+    # Compute forward recurrence (still requires a loop in pure PyTorch)
+    for t in range(1, T):
+        advantages_rev[t] = delta_rev[t] + c_rev[t-1] * advantages_rev[t-1]
+    
+    # Reverse back to original order
+    advantages = advantages_rev.flip(0)
     returns = advantages + values[:-1]
     return advantages, returns
 
