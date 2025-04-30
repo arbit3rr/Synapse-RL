@@ -2,7 +2,7 @@ import torch
 import torch.optim as optim
 import torch.nn.functional as F
 import numpy as np
-from ..network.policy import GuassianPolicyNetwork
+from ..network.policy import GaussianPolicyNetwork
 from ..network.value import ValueNetwork, QNetwork
 from ..utils.asset import map_to_range, np_to_torch, torch_to_np
 from ..utils.buffer import ReplayBuffer
@@ -23,7 +23,7 @@ class SACValuet:
         self.batch_size = batch_size
         self.memory = ReplayBuffer(int(buffer_size))
         # actor (policy)
-        self.actor = GuassianPolicyNetwork(state_size, action_size, hidden_dim).to(device)
+        self.actor = GaussianPolicyNetwork(state_size, action_size, hidden_dim).to(device)
         # critic (state value)
         self.valueNet = ValueNetwork(state_size, hidden_dim).to(device)
         self.target_valueNet = ValueNetwork(state_size, hidden_dim).to(device)
