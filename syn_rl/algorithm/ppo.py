@@ -40,29 +40,27 @@ class PPO:
         self.iter = 0
 
     def learn(self):
-        if len(self.memory) == 0:
-            return  # Avoid training if no data is available
+        if len(self.memory) < self.batch_size+1:
+            return
         
         # Read from replay buffer
-        states, actions, old_log_probs, rewards, next_states, dones = self.memory.sample(self.batch_size)
+        states, actions, old_log_probs, rewards, dones = self.memory.sample(self.batch_size, return_next_state=True)
 
         # Convert data to PyTorch tensors
         states = torch.tensor(states, dtype=torch.float32).to(device)
         actions = torch.tensor(actions, dtype=torch.float32).to(device)
         old_log_probs = torch.tensor(old_log_probs, dtype=torch.float32).to(device)
         rewards = torch.tensor(rewards, dtype=torch.float32).to(device)
-        next_states = torch.tensor(next_states, dtype=torch.float32).to(device)
         dones = torch.tensor(dones, dtype=torch.float32).to(device)
-
+        
         # Obtain value estimates
         state_values = self.value_network(states)
-        with torch.no_grad(): next_state_values = self.value_network(next_states)
 
-        advantages, discounted_returns = compute_GAE(rewards, state_values, next_state_values, dones, self.gamma, lam=0.95)
+        advantages, discounted_returns = compute_GAE(rewards, state_values, dones, self.gamma, lam=0.95)
         advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-6)
 
         # Compute Value Loss
-        value_loss = F.mse_loss(discounted_returns, state_values)
+        value_loss = F.mse_loss(discounted_returns, state_values[:-1])
 
         # Update Value Network
         self.value_optimizer.zero_grad()
@@ -70,7 +68,7 @@ class PPO:
         self.value_optimizer.step()
 
         # Compute new log probs
-        action_log_probs, entropy = self.new_policy.evaluate(states, actions)
+        action_log_probs, entropy = self.new_policy.evaluate(states[:-1], actions)
         ratios = torch.exp(action_log_probs - old_log_probs)
 
         # PPO Clipped Objective
@@ -115,19 +113,14 @@ class PPO:
                 # take action
                 next_state, reward, done, trunc, info = env.step(mapped_action)
                 # store in memory
-                self.memory.push([state, action, action_log_prob, reward, next_state, done])
+                self.memory.push([state, action, action_log_prob, reward, done])
+                # train agent
+                self.learn()
                 state = next_state
                 score += reward
                 length += 1
-
-            if len(self.memory) > self.buffer_size:
-                # train agent
-                for i in range(len(self.memory)//self.batch_size): self.learn()
-                # clear memory
-                self.memory.clear()
-                # Update Old Policy
-                self.old_policy.load_state_dict(self.new_policy.state_dict())
-
+            # update old policy
+            self.old_policy.load_state_dict(self.new_policy.state_dict())
             # log episode info
             self.writer.log_scalar("Episode/Return", score, episode)
             self.writer.log_scalar("Episode/Length", length, episode)
