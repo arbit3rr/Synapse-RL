@@ -51,20 +51,37 @@ def compute_rewards_to_go(rewards, dones, gamma):
 #     return advantages, returns
 
 
-def compute_GAE(rewards, values, dones, gamma, lam):
-    T = rewards.shape[0]
-    advantages = torch.zeros_like(rewards)
-    last_gae = 0.0
+# def compute_GAE(rewards, values, dones, gamma, lam):
+#     T = rewards.shape[0]
+#     advantages = torch.zeros_like(rewards)
+#     last_gae = 0.0
     
-    for t in reversed(range(T)):
-        if t == T - 1:
-            next_value = 0.0  # or values[T] if you have it
-        else:
-            next_value = values[t + 1]
+#     for t in reversed(range(T)):
+#         if t == T - 1:
+#             next_value = 0.0  # or values[T] if you have it
+#         else:
+#             next_value = values[t + 1]
         
-        delta = rewards[t] + gamma * next_value * (1 - dones[t]) - values[t]
-        advantages[t] = delta + gamma * lam * (1 - dones[t]) * last_gae
-        last_gae = advantages[t]
+#         delta = rewards[t] + gamma * next_value * (1 - dones[t]) - values[t]
+#         advantages[t] = delta + gamma * lam * (1 - dones[t]) * last_gae
+#         last_gae = advantages[t]
     
-    returns = advantages + values[:-1]  # or values[:T] depending on your setup
-    return advantages, returns
+#     returns = advantages + values[:-1]  # or values[:T] depending on your setup
+#     return advantages, returns
+
+def compute_GAE(rewards, values, is_terminals, gamma, lam):
+    advantages = []
+    returns = []
+    gae = 0
+    # `values` is a list of length len(rewards) + 1
+    for t in reversed(range(len(rewards))):
+        mask = 0.0 if is_terminals[t] else 1.0
+        delta = rewards[t] + gamma * values[t+1] * mask - values[t]
+        gae = delta + gamma * lam * mask * gae
+        advantages.insert(0, gae)
+        returns.insert(0, gae + values[t])
+    adv_tensor = torch.tensor(advantages, dtype=torch.float32)
+    ret_tensor = torch.tensor(returns, dtype=torch.float32)
+    # normalize advantages
+    adv_tensor = (adv_tensor - adv_tensor.mean()) / (adv_tensor.std() + 1e-8)
+    return adv_tensor, ret_tensor

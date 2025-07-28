@@ -78,7 +78,7 @@ class GaussianPolicyNetwork(nn.Module):
         dist = self._build_dist(mean, std)
         action = torch.clamp(action, -0.999, 0.999)
         log_prob = dist.log_prob(action).sum(dim=-1, keepdim=True)
-        entropy = dist.entropy().sum(dim=-1, keepdim=True)
+        entropy = dist.base_dist.entropy().sum(dim=-1, keepdim=True)
         return log_prob, entropy
     
 

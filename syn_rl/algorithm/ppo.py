@@ -1,6 +1,8 @@
 import torch
 import torch.optim as optim
 import torch.nn.functional as F
+import numpy as np
+
 from ..network.policy import GaussianPolicyNetwork
 from ..network.value import ValueNetwork
 from ..utils.asset import map_to_range, np_to_torch, torch_to_np, compute_GAE
@@ -12,7 +14,7 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 
 class PPO:
     def __init__(self, state_size, action_size, action_range, hidden_dim=[128], 
-                 gamma=0.99, lr=3e-4, clip_ratio=0.2, buffer_size=1e3, batch_size=64):
+                 gamma=0.99, lr=3e-4, clip_ratio=0.2, buffer_size=2e3, batch_size=64):
         self.state_size = state_size
         self.action_size = action_size
         self.action_range = action_range
@@ -22,6 +24,7 @@ class PPO:
         self.batch_size = batch_size
         self.memory = RolloutBuffer(int(buffer_size))
         self.buffer_size = buffer_size
+        self.learn_freq = 10 
 
         # Actor (policy)
         self.policy = GaussianPolicyNetwork(state_size, action_size, hidden_dim).to(device)
@@ -55,13 +58,14 @@ class PPO:
         dones = torch.tensor(dones, dtype=torch.float32).to(device)
         
         # Obtain value estimates
-        state_values = self.value_net(states)
+        state_values = self.value(states)
 
         advantages, discounted_returns = compute_GAE(rewards, state_values, dones, self.gamma, lam=0.95)
         advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
 
         # Compute Value Loss
-        value_loss = F.mse_loss(discounted_returns, state_values[:-1])
+        state_values = self.value(states[:-1])
+        value_loss = F.mse_loss(discounted_returns, state_values)
 
         # Update Value Network
         self.value_optimizer.zero_grad()
@@ -105,7 +109,7 @@ class PPO:
                 # convert to tensor
                 state_t = np_to_torch(state).to(device)
                 # select action
-                action_t, action_log_prob_t = self.old_policy.select_action(state_t)
+                action_t, action_log_prob_t = self.policy_old.select_action(state_t)
                 # convert to numpy
                 action = torch_to_np(action_t)
                 action_log_prob = torch_to_np(action_log_prob_t)
@@ -116,13 +120,14 @@ class PPO:
                 # store in memory
                 self.memory.push([state, action, action_log_prob, reward, done])
                 # train agent
-                self.learn()
+                if length % self.learn_freq == 0:
+                    self.learn()
                 state = next_state
                 score += reward
                 length += 1
             # update old policy
-            self.old_policy.load_state_dict(self.policy.state_dict())
-            self.memory.clear()
+            self.policy_old.load_state_dict(self.policy.state_dict())
+            # self.memory.clear()
             # log episode info
             self.writer.log_scalar("Episode/Return", score, episode)
             self.writer.log_scalar("Episode/Length", length, episode)
