@@ -39,7 +39,7 @@ class RolloutBuffer():
     def push(self, experience):
         self.buffer.append(experience)
         
-    def sample(self, batch_size, return_next_state=False, return_all=False):
+    def sample(self, batch_size, include_next_state=False, return_all=False):
         # Sample a batch of experiences
         if return_all:
             sampled_experiences = self.buffer
@@ -51,7 +51,7 @@ class RolloutBuffer():
         sampled_experiences = [np.array(x) for x in zip(*sampled_experiences)]
 
         # If include_next_state is True, fetch one additional experience for the next state
-        if return_next_state:
+        if include_next_state:
             extra_experience = self.buffer[start_idx + batch_size]
             extra_state = extra_experience[0]  # Assuming next_state is at index 3 (s, a, r, ns, d)
             sampled_experiences[0] = np.concatenate([sampled_experiences[0], np.expand_dims(extra_state,0)], axis=0)

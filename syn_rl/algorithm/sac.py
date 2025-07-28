@@ -135,7 +135,7 @@ class SAC:
 
         if episode_reward > self.best_avg_reward:
             self.best_avg_reward = episode_reward
-            torch.save(self.actor.state_dict(), "Logs/SAC_Q_best_actor.pth")
+            torch.save(self.actor.state_dict(), "Logs/SAC_best_actor.pth")
             print(f"New best model saved with average reward: {self.best_avg_reward}")
 
 

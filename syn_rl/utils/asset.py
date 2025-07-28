@@ -52,28 +52,19 @@ def compute_rewards_to_go(rewards, dones, gamma):
 
 
 def compute_GAE(rewards, values, dones, gamma, lam):
-    T, D = rewards.shape
-    device = rewards.device
+    T = rewards.shape[0]
+    advantages = torch.zeros_like(rewards)
+    last_gae = 0.0
     
-    # Compute delta for all time steps
-    mask = 1.0 - dones  # [T, D]
-    delta = rewards + gamma * values[1:] * mask - values[:-1]  # [T, D]
+    for t in reversed(range(T)):
+        if t == T - 1:
+            next_value = 0.0  # or values[T] if you have it
+        else:
+            next_value = values[t + 1]
+        
+        delta = rewards[t] + gamma * next_value * (1 - dones[t]) - values[t]
+        advantages[t] = delta + gamma * lam * (1 - dones[t]) * last_gae
+        last_gae = advantages[t]
     
-    # Reverse for forward recurrence
-    delta_rev = delta.flip(0)  # [T, D]
-    c_rev = (gamma * lam * mask).flip(0)  # [T, D]
-    
-    # Initialize output
-    advantages_rev = torch.zeros_like(rewards, device=device)  # [T, D]
-    advantages_rev[0] = delta_rev[0]
-    
-    # Compute forward recurrence (still requires a loop in pure PyTorch)
-    for t in range(1, T):
-        advantages_rev[t] = delta_rev[t] + c_rev[t-1] * advantages_rev[t-1]
-    
-    # Reverse back to original order
-    advantages = advantages_rev.flip(0)
-    returns = advantages + values[:-1]
+    returns = advantages + values[:-1]  # or values[:T] depending on your setup
     return advantages, returns
-
-

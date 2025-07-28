@@ -12,7 +12,7 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 
 class PPO:
     def __init__(self, state_size, action_size, action_range, hidden_dim=[128], 
-                 gamma=0.99, lr=3e-4, clip_ratio=0.2, buffer_size=2e3, batch_size=64):
+                 gamma=0.99, lr=3e-4, clip_ratio=0.2, buffer_size=1e3, batch_size=64):
         self.state_size = state_size
         self.action_size = action_size
         self.action_range = action_range
@@ -20,31 +20,32 @@ class PPO:
         self.lr = lr
         self.clip_ratio = clip_ratio
         self.batch_size = batch_size
-        self.memory = RolloutBuffer(int(1e5))
+        self.memory = RolloutBuffer(int(buffer_size))
         self.buffer_size = buffer_size
 
         # Actor (policy)
-        self.new_policy = GaussianPolicyNetwork(state_size, action_size, hidden_dim).to(device)
-        self.old_policy = GaussianPolicyNetwork(state_size, action_size, hidden_dim).to(device)
-        self.old_policy.load_state_dict(self.new_policy.state_dict())
+        self.policy = GaussianPolicyNetwork(state_size, action_size, hidden_dim).to(device)
+        self.policy_old = GaussianPolicyNetwork(state_size, action_size, hidden_dim).to(device)
+        self.policy_old.load_state_dict(self.policy.state_dict())
 
         # Critic (state value)
-        self.value_network = ValueNetwork(state_size, hidden_dim).to(device)
+        self.value = ValueNetwork(state_size, hidden_dim).to(device)
 
         # Optimizers
-        self.policy_optimizer = optim.Adam(self.new_policy.parameters(), lr=self.lr, weight_decay=1e-4)
-        self.value_optimizer = optim.Adam(self.value_network.parameters(), lr=self.lr, weight_decay=1e-4)
+        self.policy_optimizer = optim.Adam(self.policy.parameters(), lr=self.lr, weight_decay=1e-4)
+        self.value_optimizer = optim.Adam(self.value.parameters(), lr=self.lr, weight_decay=1e-4)
 
         # Log writer
         self.writer = TensorboardWriter(log_dir="Logs/PPO", comment="PPO")
         self.iter = 0
-
+        self.best_avg_reward = -np.inf
+        
     def learn(self):
-        if len(self.memory) < self.batch_size+1:
+        if len(self.memory) <= self.batch_size:
             return
         
         # Read from replay buffer
-        states, actions, old_log_probs, rewards, dones = self.memory.sample(self.batch_size, return_next_state=True)
+        states, actions, old_log_probs, rewards, dones = self.memory.sample(self.batch_size, include_next_state=True)
 
         # Convert data to PyTorch tensors
         states = torch.tensor(states, dtype=torch.float32).to(device)
@@ -54,10 +55,10 @@ class PPO:
         dones = torch.tensor(dones, dtype=torch.float32).to(device)
         
         # Obtain value estimates
-        state_values = self.value_network(states)
+        state_values = self.value_net(states)
 
         advantages, discounted_returns = compute_GAE(rewards, state_values, dones, self.gamma, lam=0.95)
-        advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-6)
+        advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
 
         # Compute Value Loss
         value_loss = F.mse_loss(discounted_returns, state_values[:-1])
@@ -68,12 +69,12 @@ class PPO:
         self.value_optimizer.step()
 
         # Compute new log probs
-        action_log_probs, entropy = self.new_policy.evaluate(states[:-1], actions)
+        action_log_probs, entropy = self.policy.evaluate(states[:-1], actions)
         ratios = torch.exp(action_log_probs - old_log_probs)
 
         # PPO Clipped Objective
         surr1 = ratios * advantages.detach()
-        surr2 = torch.clamp(ratios, 1 - self.clip_ratio, 1 + self.clip_ratio) * advantages.detach()
+        surr2 = torch.clamp(ratios, 1-self.clip_ratio, 1+self.clip_ratio) * advantages.detach()
         policy_loss = -torch.min(surr1, surr2).mean()
         
         # Entropy regularization
@@ -120,7 +121,8 @@ class PPO:
                 score += reward
                 length += 1
             # update old policy
-            self.old_policy.load_state_dict(self.new_policy.state_dict())
+            self.old_policy.load_state_dict(self.policy.state_dict())
+            self.memory.clear()
             # log episode info
             self.writer.log_scalar("Episode/Return", score, episode)
             self.writer.log_scalar("Episode/Length", length, episode)
