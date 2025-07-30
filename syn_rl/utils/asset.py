@@ -80,8 +80,42 @@ def compute_GAE(rewards, values, is_terminals, gamma, lam):
         gae = delta + gamma * lam * mask * gae
         advantages.insert(0, gae)
         returns.insert(0, gae + values[t])
-    adv_tensor = torch.tensor(advantages, dtype=torch.float32)
-    ret_tensor = torch.tensor(returns, dtype=torch.float32)
+    adv_tensor = torch.tensor(advantages, dtype=torch.float32).to(device)
+    ret_tensor = torch.tensor(returns, dtype=torch.float32).to(device)
     # normalize advantages
     adv_tensor = (adv_tensor - adv_tensor.mean()) / (adv_tensor.std() + 1e-8)
     return adv_tensor, ret_tensor
+
+# def compute_GAE(rewards, values, dones, gamma, lam):
+#     """
+#     rewards     : list or 1D-tensor of length T
+#     values      : list or 1D-tensor of length T+1
+#     dones       : list or 1D-tensor of booleans of length T
+#     gamma, lam  : scalars
+#     returns
+#       adv  : (T,) tensor of advantages
+#       ret  : (T,) tensor of TD(λ) returns
+#     """
+#     T = len(rewards)
+#     # make sure we’re not backpropagating through the value estimates
+#     values = torch.as_tensor(values, dtype=torch.float32).detach().to(device)
+#     rewards = torch.as_tensor(rewards, dtype=torch.float32).to(device)
+#     dones   = torch.as_tensor(dones,   dtype=torch.bool).to(device)
+
+#     adv     = torch.zeros(T, dtype=torch.float32)
+#     last_gae = 0.0
+
+#     for t in reversed(range(T)):
+#         mask = 0.0 if dones[t] else 1.0
+#         # δ_t = r_t + γ V_{t+1} * mask − V_t
+#         delta = rewards[t] + gamma * values[t+1] * mask - values[t]
+#         last_gae = delta + gamma * lam * mask * last_gae
+#         adv[t] = last_gae
+
+#     # compute the “λ‐returns”
+#     ret = adv + values[:-1]
+
+#     # optional normalization
+#     adv = (adv - adv.mean()) / (adv.std(unbiased=False) + 1e-8)
+
+#     return adv, ret
