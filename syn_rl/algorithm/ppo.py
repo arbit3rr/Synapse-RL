@@ -14,7 +14,7 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 
 class PPO:
     def __init__(self, state_size, action_size, action_range, hidden_dim=[128], 
-                 gamma=0.99, lr=3e-4, clip_ratio=0.2, buffer_size=2e3, batch_size=256):
+                 gamma=0.99, lr=3e-4, clip_ratio=0.2, buffer_size=5e3, batch_size=256):
         self.state_size = state_size
         self.action_size = action_size
         self.action_range = action_range
@@ -48,24 +48,26 @@ class PPO:
             return
         
         # Read from replay buffer
-        states, actions, old_log_probs, rewards, dones = self.memory.sample(self.batch_size, include_next_state=True)
+        states, actions, old_log_probs, rewards, next_states, dones = self.memory.sample(self.batch_size, include_next_state=False)
 
         # Convert data to PyTorch tensors
         states = torch.tensor(states, dtype=torch.float32).to(device)
         actions = torch.tensor(actions, dtype=torch.float32).to(device)
         old_log_probs = torch.tensor(old_log_probs, dtype=torch.float32).to(device)
         rewards = torch.tensor(rewards, dtype=torch.float32).to(device)
+        next_states = torch.tensor(next_states, dtype=torch.float32).to(device)
         dones = torch.tensor(dones, dtype=torch.float32).to(device)
         
         # Obtain value estimates
-        state_values = self.value(states).detach()
+        state_values = self.value(states)
+        next_state_values = self.value(next_states)
 
         # Compute GAE advantages and returns
         advantages = []
         returns = []
         gae = 0
         lam = 0.95
-        values = list(state_values) + [torch.tensor(0.0).to(device)]
+        values = list(state_values) + [next_state_values[-1]]+ [torch.tensor(0.0).to(device)]
         for t in reversed(range(len(rewards))):
             mask = 0 if dones[t] else 1
             delta = rewards[t] + self.gamma * values[t+1] * mask - values[t]
@@ -74,14 +76,14 @@ class PPO:
             returns.insert(0, gae + values[t])
 
         advantages = torch.tensor(advantages, dtype=torch.float32).to(device)
-        returns = torch.tensor(returns, dtype=torch.float32).to(device)
+        returns = torch.tensor(returns, dtype=torch.float32).unsqueeze(-1).to(device)
         advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
 
         # advantages, discounted_returns = compute_GAE(rewards, state_values, dones, self.gamma, lam=0.95)
         # advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
-
+        
         # Compute Value Loss
-        state_values = self.value(states[:-1])
+        # state_values = self.value(states[:-1])
         value_loss = F.mse_loss(returns, state_values)
 
         # Update Value Network
@@ -90,7 +92,7 @@ class PPO:
         self.value_optimizer.step()
 
         # Compute new log probs
-        action_log_probs, entropy = self.policy.evaluate(states[:-1], actions)
+        action_log_probs, entropy = self.policy.evaluate(states, actions)
         ratios = torch.exp(action_log_probs - old_log_probs)
 
         # PPO Clipped Objective
@@ -136,9 +138,9 @@ class PPO:
                 # take action
                 next_state, reward, done, trunc, info = env.step(mapped_action)
                 # store in memory
-                self.memory.push([state, action, action_log_prob, reward, done])
+                self.memory.push([state, action, action_log_prob, reward, next_state, done])
                 # train agent
-                if counter % 64 == 0:
+                if counter % self.batch_size == 0:
                     self.learn()
                 state = next_state
                 score += reward
