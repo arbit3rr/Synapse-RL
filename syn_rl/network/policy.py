@@ -33,6 +33,7 @@ class DeterministicPolicyNetwork(nn.Module):
         action = self(state)
         return action + torch.randn(self.action_dim).to(device)*self.uncertainty
 
+
 # Gaussian Policy Network
 class GaussianPolicyNetwork(nn.Module):
     def __init__(self, state_dim, action_dim, hidden_dims):
@@ -48,6 +49,7 @@ class GaussianPolicyNetwork(nn.Module):
         # Output layers for mean and standard deviation
         self.fc_mean = nn.Linear(input_dim, action_dim)
         self.fc_log_std = nn.Linear(input_dim, action_dim)
+        nn.init.constant_(self.fc_log_std.bias, -0.3)  # log_std ≈ 0.6
 
     def forward(self, state):
         x = self.hidden_layers(state)
@@ -80,7 +82,6 @@ class GaussianPolicyNetwork(nn.Module):
         log_prob = dist.log_prob(action).sum(dim=-1, keepdim=True)
         entropy = dist.base_dist.entropy().sum(dim=-1, keepdim=True)
         return log_prob, entropy
-    
 
     
 # Categorical Policy Network
