@@ -14,17 +14,17 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 
 class PPO:
     def __init__(self, state_size, action_size, action_range, hidden_dim=[128], 
-                 gamma=0.99, lam=0.95, lr=3e-4, clip_ratio=0.1, K_epochs=100, buffer_size=2e3):
+                 gamma=0.99, lr=3e-4, clip_ratio=0.2, buffer_size=500, batch_size=64):
         self.state_size = state_size
         self.action_size = action_size
         self.action_range = action_range
         self.gamma = gamma
-        self.lam = lam
         self.lr = lr
         self.clip_ratio = clip_ratio
-        self.K_epochs = K_epochs
-        self.buffer_size = buffer_size
+        self.batch_size = batch_size
         self.memory = RolloutBuffer(int(buffer_size))
+        self.buffer_size = buffer_size
+        self.learn_freq = 10 
 
         # Actor (policy)
         self.policy = GaussianPolicyNetwork(state_size, action_size, hidden_dim).to(device)
@@ -44,71 +44,69 @@ class PPO:
         self.best_avg_reward = -np.inf
         
     def learn(self):
+        if len(self.memory) <= self.batch_size:
+            return
+        
         # Read from replay buffer
-        # states, actions, old_log_probs, rewards, dones = self.memory.sample(self.batch_size, include_next_state=True)
-        states, actions, old_log_probs, rewards, dones = zip(*self.memory.buffer)
+        states, actions, old_log_probs, rewards, dones = self.memory.sample(self.batch_size, include_next_state=True)
 
         # Convert data to PyTorch tensors
         states = torch.tensor(states, dtype=torch.float32).to(device)
         actions = torch.tensor(actions, dtype=torch.float32).to(device)
         old_log_probs = torch.tensor(old_log_probs, dtype=torch.float32).to(device)
-        # rewards = torch.tensor(rewards, dtype=torch.float32).to(device)
-        # dones = torch.tensor(dones, dtype=torch.float32).to(device)
-
+        rewards = torch.tensor(rewards, dtype=torch.float32).to(device)
+        dones = torch.tensor(dones, dtype=torch.float32).to(device)
+        
         # Obtain value estimates
-        state_values = self.value(states)
+        state_values = self.value(states).detach()
 
         # Compute GAE advantages and returns
-        advantages, returns = [], []
+        advantages = []
+        returns = []
         gae = 0
+        lam = 0.95
         values = list(state_values) + [torch.tensor(0.0).to(device)]
         for t in reversed(range(len(rewards))):
             mask = 0 if dones[t] else 1
-            delta = rewards[t] + self.gamma * values[t + 1] * mask - values[t]
-            gae = delta + self.gamma * self.lam * mask * gae
+            delta = rewards[t] + self.gamma * values[t+1] * mask - values[t]
+            gae = delta + self.gamma * lam * mask * gae
             advantages.insert(0, gae)
             returns.insert(0, gae + values[t])
 
-        advantages = torch.tensor(advantages, dtype=torch.float32).to(device).reshape(-1, 1)
-        returns = torch.tensor(returns, dtype=torch.float32).to(device).reshape(-1, 1)
+        advantages = torch.tensor(advantages, dtype=torch.float32).to(device)
+        returns = torch.tensor(returns, dtype=torch.float32).unsqueeze(-1).to(device)
         advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
 
         # advantages, discounted_returns = compute_GAE(rewards, state_values, dones, self.gamma, lam=0.95)
         # advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
         
-        # Optimize
-        for _ in range(self.K_epochs):
-            # Compute Value Loss
-            state_values = self.value(states)
-            value_loss = F.mse_loss(state_values, returns)
+        # Compute Value Loss
+        state_values = self.value(states[:-1])
+        value_loss = F.mse_loss(returns, state_values)
 
-            # Update Value Network
-            self.value_optimizer.zero_grad()
-            value_loss.backward()
-            self.value_optimizer.step()
+        # Update Value Network
+        self.value_optimizer.zero_grad()
+        value_loss.backward()
+        self.value_optimizer.step()
 
-            # Compute new log probs
-            action_log_probs, entropy = self.policy.evaluate(states, actions)
-            ratios = torch.exp(action_log_probs - old_log_probs)
+        # Compute new log probs
+        action_log_probs, entropy = self.policy.evaluate(states[:-1], actions)
+        ratios = torch.exp(action_log_probs - old_log_probs)
 
-            # PPO Clipped Objective
-            surr1 = ratios * advantages
-            surr2 = torch.clamp(ratios, 1-self.clip_ratio, 1+self.clip_ratio) * advantages
-            policy_loss = -torch.min(surr1, surr2).mean()
-            
-            # Entropy regularization
-            entropy_coef = 0.01  # Adjust this value to control exploration
-            entropy_loss = -entropy.mean()  # We maximize entropy, so we take negative
-            total_policy_loss = policy_loss + entropy_coef * entropy_loss
+        # PPO Clipped Objective
+        surr1 = ratios * advantages
+        surr2 = torch.clamp(ratios, 1-self.clip_ratio, 1+self.clip_ratio) * advantages
+        policy_loss = -torch.min(surr1, surr2).mean()
+        
+        # Entropy regularization
+        entropy_coef = 0.01  # Adjust this value to control exploration
+        entropy_loss = -entropy.mean()  # We maximize entropy, so we take negative
+        total_policy_loss = policy_loss + entropy_coef * entropy_loss
 
-            # Update Actor Network
-            self.policy_optimizer.zero_grad()
-            total_policy_loss.backward()
-            self.policy_optimizer.step()
-
-        # Update old policy
-        self.policy_old.load_state_dict(self.policy.state_dict())
-        self.memory.clear()
+        # Update Actor Network
+        self.policy_optimizer.zero_grad()
+        total_policy_loss.backward()
+        self.policy_optimizer.step()
 
         # write loss values
         self.writer.log_scalar("Loss/Policy", policy_loss, self.iter)
@@ -119,6 +117,7 @@ class PPO:
 
     def train(self, env, episodes):
         returns = []
+        counter = 0
         for episode in range(episodes):
             score = 0
             length = 0
@@ -139,11 +138,17 @@ class PPO:
                 # store in memory
                 self.memory.push([state, action, action_log_prob, reward, done])
                 # train agent
-                if len(self.memory.buffer) >= self.buffer_size:
+                if counter % self.batch_size == 0:
                     self.learn()
                 state = next_state
                 score += reward
                 length += 1
+                counter += 1
+            # update old policy
+            if self.iter % self.learn_freq == 0:
+                self.policy_old.load_state_dict(self.policy.state_dict())
+                print("updated the old policy")
+            # self.memory.clear()
             # log episode info
             self.writer.log_scalar("Episode/Return", score, episode)
             self.writer.log_scalar("Episode/Length", length, episode)

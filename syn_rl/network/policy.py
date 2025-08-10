@@ -5,7 +5,34 @@ from torch.distributions import Normal, TransformedDistribution, TanhTransform
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
+# Categorical Policy Network
+class CategoricalPolicyNetwork(nn.Module):
+    def __init__(self, state_dim, action_dim, hidden_dims):
+        super().__init__()
+        # Build hidden layers
+        layers = []
+        input_dim = state_dim
+        for hidden_dim in hidden_dims:
+            layers.append(nn.Linear(input_dim, hidden_dim))
+            layers.append(nn.LeakyReLU())
+            input_dim = hidden_dim
+        self.hidden_layers = nn.Sequential(*layers)
+    
+        # Output layers for mean and standard deviation
+        self.fc_out = nn.Linear(input_dim, action_dim)
 
+    def forward(self, state):
+        x = self.hidden_layers(state)
+        logits = self.fc_out(x)
+        return F.softmax(logits, dim=-1)
+    
+    def select_action(self, state):
+        probs = self(state)
+        dist = torch.distributions.Categorical(probs)
+        action = dist.sample()
+        return action, dist.log_prob(action)
+    
+    
 # Deterministic Policy Network
 class DeterministicPolicyNetwork(nn.Module):
     def __init__(self, state_dim, action_dim, hidden_dims):
@@ -84,29 +111,3 @@ class GaussianPolicyNetwork(nn.Module):
         return log_prob, entropy
 
     
-# Categorical Policy Network
-class CategoricalPolicyNetwork(nn.Module):
-    def __init__(self, state_dim, action_dim, hidden_dims):
-        super().__init__()
-        # Build hidden layers
-        layers = []
-        input_dim = state_dim
-        for hidden_dim in hidden_dims:
-            layers.append(nn.Linear(input_dim, hidden_dim))
-            layers.append(nn.LeakyReLU())
-            input_dim = hidden_dim
-        self.hidden_layers = nn.Sequential(*layers)
-    
-        # Output layers for mean and standard deviation
-        self.fc_out = nn.Linear(input_dim, action_dim)
-
-    def forward(self, state):
-        x = self.hidden_layers(state)
-        logits = self.fc_out(x)
-        return F.softmax(logits, dim=-1)
-    
-    def select_action(self, state):
-        probs = self(state)
-        dist = torch.distributions.Categorical(probs)
-        action = dist.sample()
-        return action, dist.log_prob(action)
