@@ -6,7 +6,7 @@ import numpy as np
 from ..network.policy import GaussianPolicyNetwork
 from ..network.value import ValueNetwork
 from ..utils.asset import map_to_range, np_to_torch, torch_to_np, compute_GAE
-from ..utils.buffer import RolloutBuffer
+from ..utils.buffer import ExpBuffer
 from ..utils.plot import plot_return
 from ..utils.logger import TensorboardWriter
 
@@ -22,7 +22,7 @@ class PPO:
         self.lr = lr
         self.clip_ratio = clip_ratio
         self.batch_size = batch_size
-        self.memory = RolloutBuffer(int(buffer_size))
+        self.memory = ExpBuffer(buffer_size)
         self.buffer_size = buffer_size
         self.learn_freq = 10 
 

@@ -5,7 +5,7 @@ import numpy as np
 from ..network.policy import GaussianPolicyNetwork
 from ..network.value import QNetwork
 from ..utils.asset import map_to_range, np_to_torch, torch_to_np
-from ..utils.buffer import ReplayBuffer
+from ..utils.buffer import ExpBuffer
 from ..utils.plot import plot_return
 from ..utils.logger import TensorboardWriter
 
@@ -21,7 +21,7 @@ class SAC:
         self.lr = lr
         self.tau = tau
         self.batch_size = batch_size
-        self.memory = ReplayBuffer(int(buffer_size))
+        self.memory = ExpBuffer(buffer_size)
 
         # Trainable entropy temperature
         self.target_entropy = -action_size  # A heuristic for continuous action spaces

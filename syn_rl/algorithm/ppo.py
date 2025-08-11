@@ -6,7 +6,7 @@ import numpy as np
 from ..network.policy import GaussianPolicyNetwork
 from ..network.value import ValueNetwork
 from ..utils.asset import map_to_range, np_to_torch, torch_to_np, compute_GAE
-from ..utils.buffer import RolloutBuffer
+from ..utils.buffer import ExpBuffer
 from ..utils.plot import plot_return
 from ..utils.logger import TensorboardWriter
 
@@ -24,7 +24,7 @@ class PPO:
         self.clip_ratio = clip_ratio
         self.K_epochs = K_epochs
         self.buffer_size = buffer_size
-        self.memory = RolloutBuffer(int(buffer_size))
+        self.memory = ExpBuffer(buffer_size)
 
         # Actor (policy)
         self.policy = GaussianPolicyNetwork(state_size, action_size, hidden_dim).to(device)
@@ -45,36 +45,22 @@ class PPO:
         
     def learn(self):
         # Read from replay buffer
-        # states, actions, old_log_probs, rewards, dones = self.memory.sample(self.batch_size, include_next_state=True)
-        states, actions, old_log_probs, rewards, dones = zip(*self.memory.buffer)
+        states, actions, old_log_probs, rewards, dones = self.memory.sample(batch_size=np.inf, return_all=True)
+        # states, actions, old_log_probs, rewards, dones = zip(*self.memory.buffer)
 
         # Convert data to PyTorch tensors
         states = torch.tensor(states, dtype=torch.float32).to(device)
         actions = torch.tensor(actions, dtype=torch.float32).to(device)
         old_log_probs = torch.tensor(old_log_probs, dtype=torch.float32).to(device)
-        # rewards = torch.tensor(rewards, dtype=torch.float32).to(device)
-        # dones = torch.tensor(dones, dtype=torch.float32).to(device)
+        rewards = torch.tensor(rewards, dtype=torch.float32).to(device)
+        dones = torch.tensor(dones, dtype=torch.float32).to(device)
 
         # Obtain value estimates
         state_values = self.value(states)
 
         # Compute GAE advantages and returns
-        advantages, returns = [], []
-        gae = 0
-        values = list(state_values) + [torch.tensor(0.0).to(device)]
-        for t in reversed(range(len(rewards))):
-            mask = 0 if dones[t] else 1
-            delta = rewards[t] + self.gamma * values[t + 1] * mask - values[t]
-            gae = delta + self.gamma * self.lam * mask * gae
-            advantages.insert(0, gae)
-            returns.insert(0, gae + values[t])
-
-        advantages = torch.tensor(advantages, dtype=torch.float32).to(device).reshape(-1, 1)
-        returns = torch.tensor(returns, dtype=torch.float32).to(device).reshape(-1, 1)
+        advantages, returns = compute_GAE(rewards, state_values, dones, self.gamma, lam=0.95)
         advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
-
-        # advantages, discounted_returns = compute_GAE(rewards, state_values, dones, self.gamma, lam=0.95)
-        # advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
         
         # Optimize
         for _ in range(self.K_epochs):

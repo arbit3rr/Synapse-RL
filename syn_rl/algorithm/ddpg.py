@@ -5,7 +5,7 @@ import numpy as np
 from ..network.policy import DeterministicPolicyNetwork
 from ..network.value import QNetwork
 from ..utils.asset import map_to_range, np_to_torch, torch_to_np
-from ..utils.buffer import ReplayBuffer
+from ..utils.buffer import ExpBuffer
 from ..utils.plot import plot_return
 from ..utils.logger import TensorboardWriter
 
@@ -22,7 +22,7 @@ class DDPG:
         self.min_uncertainty = torch.tensor(min_uncertainty)
         self.uncertainty_decay = torch.tensor(uncertainty_decay)
         self.batch_size = batch_size
-        self.memory = ReplayBuffer(int(buffer_size))
+        self.memory = ExpBuffer(buffer_size)
         # actor (policy)
         self.actor = DeterministicPolicyNetwork(state_size, action_size, hidden_dim).to(device)
         self.target_actor = DeterministicPolicyNetwork(state_size, action_size, hidden_dim).to(device)

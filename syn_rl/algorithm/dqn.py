@@ -4,7 +4,7 @@ import torch.nn.functional as F
 import numpy as np
 from ..network.value import DQNetwork
 from ..utils.asset import np_to_torch, torch_to_np
-from ..utils.buffer import ReplayBuffer
+from ..utils.buffer import ExpBuffer
 from ..utils.plot import plot_return
 from ..utils.logger import TensorboardWriter
 
@@ -21,7 +21,7 @@ class DQN:
         self.lr = lr
         self.tau = tau
         self.batch_size = batch_size
-        self.memory = ReplayBuffer(int(buffer_size))
+        self.memory = ExpBuffer(buffer_size)
         # Q Network (state-action value)
         self.q_network = DQNetwork(state_size, action_size, hidden_dim, epsilon).to(device)
         self.target_network = DQNetwork(state_size, action_size, hidden_dim, epsilon).to(device)
