@@ -12,9 +12,9 @@ from ..utils.logger import TensorboardWriter
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
-class PPO:
+class PPO_EP:
     def __init__(self, state_size, action_size, action_range, hidden_dim=[128], 
-                 gamma=0.99, lam=0.95, lr=3e-4, clip_ratio=0.1, policy_update_freq=100, buffer_size=2e3, batch_size=64):
+                 gamma=0.99, lam=0.95, lr=3e-4, clip_ratio=0.1, K_epochs=100, buffer_size=2e3):
         self.state_size = state_size
         self.action_size = action_size
         self.action_range = action_range
@@ -22,9 +22,8 @@ class PPO:
         self.lam = lam
         self.lr = lr
         self.clip_ratio = clip_ratio
-        self.policy_update_freq = policy_update_freq
+        self.K_epochs = K_epochs
         self.buffer_size = buffer_size
-        self.batch_size = batch_size
         self.memory = ExpBuffer(buffer_size)
 
         # Actor (policy)
@@ -40,15 +39,13 @@ class PPO:
         self.value_optimizer = optim.Adam(self.value.parameters(), lr=3*self.lr, weight_decay=1e-4)
 
         # Log writer
-        self.writer = TensorboardWriter(log_dir="Logs/PPO", comment="PPO")
+        self.writer = TensorboardWriter(log_dir="Logs/PPO_EP", comment="PPO_EP")
         self.iter = 0
         self.best_avg_reward = -np.inf
         
     def learn(self):
-        if len(self.memory) < self.batch_size:
-            return
         # Read from replay buffer
-        states, actions, old_log_probs, rewards, next_states, dones = self.memory.sample(batch_size=self.batch_size, return_all=False, keep_order=True)
+        states, actions, old_log_probs, rewards, next_states, dones = self.memory.sample(batch_size=np.inf, return_all=True)
         # states, actions, old_log_probs, rewards, dones = zip(*self.memory.buffer)
 
         # Convert data to PyTorch tensors
@@ -68,33 +65,38 @@ class PPO:
         advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
         
         # Optimize
-        # Compute Value Loss
-        state_values = self.value(states)
-        value_loss = F.mse_loss(state_values, returns)
+        for _ in range(self.K_epochs):
+            # Compute Value Loss
+            state_values = self.value(states)
+            value_loss = F.mse_loss(state_values, returns)
 
-        # Update Value Network
-        self.value_optimizer.zero_grad()
-        value_loss.backward()
-        self.value_optimizer.step()
+            # Update Value Network
+            self.value_optimizer.zero_grad()
+            value_loss.backward()
+            self.value_optimizer.step()
 
-        # Compute new log probs
-        action_log_probs, entropy = self.policy.evaluate(states, actions)
-        ratios = torch.exp(action_log_probs - old_log_probs)
+            # Compute new log probs
+            action_log_probs, entropy = self.policy.evaluate(states, actions)
+            ratios = torch.exp(action_log_probs - old_log_probs)
 
-        # PPO Clipped Objective
-        surr1 = ratios * advantages
-        surr2 = torch.clamp(ratios, 1-self.clip_ratio, 1+self.clip_ratio) * advantages
-        policy_loss = -torch.min(surr1, surr2).mean()
-        
-        # Entropy regularization
-        entropy_coef = 0.01  # Adjust this value to control exploration
-        entropy_loss = -entropy.mean()  # We maximize entropy, so we take negative
-        total_policy_loss = policy_loss + entropy_coef * entropy_loss
+            # PPO Clipped Objective
+            surr1 = ratios * advantages
+            surr2 = torch.clamp(ratios, 1-self.clip_ratio, 1+self.clip_ratio) * advantages
+            policy_loss = -torch.min(surr1, surr2).mean()
+            
+            # Entropy regularization
+            entropy_coef = 0.01  # Adjust this value to control exploration
+            entropy_loss = -entropy.mean()  # We maximize entropy, so we take negative
+            total_policy_loss = policy_loss + entropy_coef * entropy_loss
 
-        # Update Actor Network
-        self.policy_optimizer.zero_grad()
-        total_policy_loss.backward()
-        self.policy_optimizer.step()
+            # Update Actor Network
+            self.policy_optimizer.zero_grad()
+            total_policy_loss.backward()
+            self.policy_optimizer.step()
+
+        # Update old policy
+        self.policy_old.load_state_dict(self.policy.state_dict())
+        self.memory.clear()
 
         # write loss values
         self.writer.log_scalar("Loss/Policy", policy_loss, self.iter)
@@ -125,9 +127,8 @@ class PPO:
                 # store in memory
                 self.memory.push([state, action, action_log_prob, reward, next_state, done])
                 # train agent
-                self.learn()
-                # Update old policy
-                if self.iter % self.policy_update_freq == 0: self.policy_old.load_state_dict(self.policy.state_dict())
+                if len(self.memory.buffer) >= self.buffer_size:
+                    self.learn()
                 state = next_state
                 score += reward
                 length += 1
@@ -137,6 +138,7 @@ class PPO:
             # store episode return
             returns.append(score)
             plot_return(returns, f'Proximal Policy Optimization (PPO) ({device})')
+
         env.close()
         self.writer.close()
         return returns

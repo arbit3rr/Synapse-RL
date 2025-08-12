@@ -31,10 +31,10 @@ def compute_rewards_to_go(rewards, dones, gamma):
 
 
 
-def compute_GAE(rewards, state_values, dones, gamma=0.99, lam=0.95):
+def compute_GAE(rewards, state_values, next_state_values, dones, gamma=0.99, lam=0.95):
     # Append bootstrap value (0.0) for last step
-    zero_value = torch.zeros((1, 1), device=state_values.device, dtype=state_values.dtype)
-    values = torch.cat([state_values.detach(), zero_value], dim=0)  # [T+1, 1]
+    # zero_value = torch.zeros((1, 1), device=state_values.device, dtype=state_values.dtype)
+    values = torch.cat([state_values.detach(), next_state_values[-1:].detach()], dim=0)  # [T+1, 1]
 
     T = rewards.size(0)
     advantages = torch.zeros((T, 1), dtype=torch.float32, device=rewards.device)

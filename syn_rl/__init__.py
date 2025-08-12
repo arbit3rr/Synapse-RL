@@ -3,5 +3,6 @@ from .algorithm.a2c import ActorCritic
 from .algorithm.pg import PolicyGradient
 from .algorithm.ddpg import DDPG
 from .algorithm.sac import SAC
-from .algorithm.sac_v import SACValuet
+from .algorithm.sac_v import SAC_VALUE
 from .algorithm.ppo import PPO
+from .algorithm.ppo_ep import PPO_EP

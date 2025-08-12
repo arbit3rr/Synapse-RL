@@ -16,7 +16,7 @@ class ExpBuffer():
         if return_all:
             sampled_experiences = self.buffer
         elif keep_order:
-            start_idx = random.randint(0, len(self.buffer)-batch_size-1)
+            start_idx = random.randint(0, len(self.buffer)-batch_size)
             sampled_experiences = list(itertools.islice(self.buffer, start_idx, start_idx+batch_size))
         else:
             sampled_experiences = random.sample(self.buffer, batch_size)
