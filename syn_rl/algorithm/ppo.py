@@ -156,6 +156,8 @@ class PPO:
             # store episode return
             returns.append(score)
             plot_return(returns, f'Proximal Policy Optimization (PPO) ({device})')
+            # Evaluation
+            if (episode + 1) % 20 == 0: self.evaluate(env)
         env.close()
         self.writer.close()
         return returns
