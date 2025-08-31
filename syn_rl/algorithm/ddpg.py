@@ -86,18 +86,40 @@ class DDPG:
         for target_param, param in zip(self.target_critic.parameters(), self.critic.parameters()):
             target_param.data.copy_(self.tau * target_param.data + (1-self.tau) * param.data)
     
+
     def decay_epsilon(self):
         # self.actor.uncertainty[self.actor.uncertainty > self.min_uncertainty] *= self.uncertainty_decay
         self.actor.uncertainty = torch.minimum(self.actor.uncertainty*self.uncertainty_decay, self.min_uncertainty)
+
+
+    def evaluate(self, env):
+        done, trunc = False, False
+        episode_reward = 0
+        state, _ = env.reset()
+        while not (done or trunc):
+            # Use the policy to select an action (without exploration)
+            state_t = np_to_torch(state).to(device)
+            action_t = self.actor.select_action(state_t)
+            action = torch_to_np(action_t)
+            mapped_action = map_to_range(action, self.action_range)
+            next_state, reward, done, trunc, _ = env.step(mapped_action)
+            episode_reward += reward
+            state = next_state
+
+        if episode_reward > self.best_avg_reward:
+            self.best_avg_reward = episode_reward
+            torch.save(self.actor.state_dict(), "Logs/DDPG_best_actor.pth")
+            print(f"New best model saved with average reward: {self.best_avg_reward}")
+
 
     def train(self, env, episodes):
         returns = []
         for episode in range(episodes):
             score = 0
             length = 0
-            done = False
+            done, trunc = False, False
             state, _ = env.reset()
-            while not done:
+            while not (done or trunc):
                 # convert to tensor
                 state_t = np_to_torch(state).to(device)
                 # select action
@@ -107,7 +129,7 @@ class DDPG:
                 # map action to range
                 mapped_action = map_to_range(action, self.action_range)
                 # take action
-                next_state, reward, done, _, info = env.step(mapped_action)
+                next_state, reward, done, trunc, info = env.step(mapped_action)
                 # store in memory
                 self.memory.push([state, action, reward, next_state, done])
                 # train agent

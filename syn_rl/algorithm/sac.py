@@ -120,16 +120,16 @@ class SAC:
 
 
     def evaluate(self, env):
-        state, _ = env.reset()
         done, trunc = False, False
         episode_reward = 0
+        state, _ = env.reset()
         while not (done or trunc):
             # Use the policy to select an action (without exploration)
             state_t = np_to_torch(state).to(device)
             action_t, _ = self.actor.select_action(state_t, deterministic=True)
             action = torch_to_np(action_t)
             mapped_action = map_to_range(action, self.action_range)
-            next_state, reward, done, trunc, _ = env.step(mapped_action)
+            next_state, reward, done, trunc, info = env.step(mapped_action)
             episode_reward += reward
             state = next_state
 

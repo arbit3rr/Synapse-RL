@@ -102,6 +102,25 @@ class PPO:
         self.writer.log_scalar("Loss/Value", value_loss, self.iter)
         self.iter += 1
 
+    def evaluate(self, env):
+        done, trunc = False, False
+        episode_reward = 0
+        state, _ = env.reset()
+        while not (done or trunc):
+            # Use the policy to select an action (without exploration)
+            state_t = np_to_torch(state).to(device)
+            action_t, _ = self.policy_old.select_action(state_t, deterministic=True)
+            action = torch_to_np(action_t)
+            mapped_action = map_to_range(action, self.action_range)
+            next_state, reward, done, trunc, info = env.step(mapped_action)
+            episode_reward += reward
+            state = next_state
+
+        if episode_reward > self.best_avg_reward:
+            self.best_avg_reward = episode_reward
+            torch.save(self.policy_old.state_dict(), "Logs/PPO_best_actor.pth")
+            print(f"New best model saved with average reward: {self.best_avg_reward}")
+
 
     def train(self, env, episodes):
         returns = []
