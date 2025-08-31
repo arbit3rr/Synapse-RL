@@ -92,7 +92,7 @@ class DDPG:
         self.actor.uncertainty = torch.minimum(self.actor.uncertainty*self.uncertainty_decay, self.min_uncertainty)
 
 
-    def evaluate(self, env):
+    def evaluate(self, env, episode):
         done, trunc = False, False
         episode_reward = 0
         state, _ = env.reset()
@@ -105,12 +105,13 @@ class DDPG:
             next_state, reward, done, trunc, _ = env.step(mapped_action)
             episode_reward += reward
             state = next_state
-
+        # Save best model
         if episode_reward > self.best_avg_reward:
             self.best_avg_reward = episode_reward
             torch.save(self.actor.state_dict(), "Logs/DDPG_best_actor.pth")
             print(f"New best model saved with average reward: {self.best_avg_reward}")
-
+        # Log episode reward
+        self.writer.log_scalar("Episode/Return Eval", episode_reward, episode)
 
     def train(self, env, episodes):
         returns = []
@@ -146,7 +147,7 @@ class DDPG:
             returns.append(score)
             plot_return(returns, f'Deep Deterministic Policy Gradient (DDPG) ({device})')
             # Evaluation
-            if (episode + 1) % 20 == 0: self.evaluate(env)
+            if (episode + 1) % 20 == 0: self.evaluate(env, episode)
         env.close()
         self.writer.close()
         return returns

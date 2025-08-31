@@ -119,7 +119,7 @@ class SAC:
             target_param.data.copy_(self.tau * param.data + (1 - self.tau) * target_param.data)
 
 
-    def evaluate(self, env):
+    def evaluate(self, env, episode):
         done, trunc = False, False
         episode_reward = 0
         state, _ = env.reset()
@@ -132,12 +132,13 @@ class SAC:
             next_state, reward, done, trunc, info = env.step(mapped_action)
             episode_reward += reward
             state = next_state
-
+        # Save best model
         if episode_reward > self.best_avg_reward:
             self.best_avg_reward = episode_reward
             torch.save(self.actor.state_dict(), "Logs/SAC_best_actor.pth")
             print(f"New best model saved with average reward: {self.best_avg_reward}")
-
+        # Log episode reward
+        self.writer.log_scalar("Episode/Return Eval", episode_reward, episode)
 
     def train(self, env, episodes):
         returns = []
@@ -172,7 +173,7 @@ class SAC:
             returns.append(score)
             plot_return(returns, f'Soft Actor Critic (SAC) ({device})')
             # Evaluation
-            if (episode + 1) % 20 == 0: self.evaluate(env)
+            if (episode + 1) % 20 == 0: self.evaluate(env, episode)
         env.close()
         self.writer.close()
         return returns
