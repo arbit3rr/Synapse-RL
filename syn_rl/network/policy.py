@@ -96,7 +96,7 @@ class GaussianPolicyNetwork(nn.Module):
         mean, std = self(state)
         dist = self._build_dist(mean, std)
         if deterministic: 
-            action = torch.tanh(mean)
+            action = dist.mean
         else: 
             action = dist.rsample()
         log_prob = dist.log_prob(action).sum(dim=-1, keepdim=True)
