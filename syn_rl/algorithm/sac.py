@@ -121,7 +121,7 @@ class SAC:
 
     def evaluate(self, env, episode):
         done, trunc = False, False
-        episode_reward = 0
+        score = 0
         state, _ = env.reset()
         while not (done or trunc):
             # Use the policy to select an action (without exploration)
@@ -130,15 +130,15 @@ class SAC:
             action = torch_to_np(action_t)
             mapped_action = map_to_range(action, self.action_range)
             next_state, reward, done, trunc, info = env.step(mapped_action)
-            episode_reward += reward
             state = next_state
+            score += reward
         # Save best model
-        if episode_reward > self.best_avg_reward:
-            self.best_avg_reward = episode_reward
+        if score > self.best_avg_reward:
+            self.best_avg_reward = score
             torch.save(self.actor.state_dict(), "Logs/SAC_best_actor.pth")
             print(f"New best model saved with average reward: {self.best_avg_reward}")
         # Log episode reward
-        self.writer.log_scalar("Episode/Return Eval", episode_reward, episode)
+        self.writer.log_scalar("Episode/Return Eval", score, episode)
 
     def train(self, env, episodes):
         returns = []
