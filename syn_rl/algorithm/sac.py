@@ -47,6 +47,7 @@ class SAC:
 
         # Logging
         self.writer = TensorboardWriter(log_dir="Logs/SAC", comment="SAC")
+        self.episode = 0
         self.iter = 0
         self.best_avg_reward = -np.inf
 
@@ -119,7 +120,7 @@ class SAC:
             target_param.data.copy_(self.tau * param.data + (1 - self.tau) * target_param.data)
 
 
-    def evaluate(self, env, episode):
+    def evaluate(self, env):
         done, trunc = False, False
         score = 0
         state, _ = env.reset()
@@ -138,11 +139,11 @@ class SAC:
             torch.save(self.actor.state_dict(), "Logs/SAC_best_actor.pth")
             print(f"New best model saved with average reward: {self.best_avg_reward}")
         # Log episode reward
-        self.writer.log_scalar("Episode/Return Eval", score, episode)
+        self.writer.log_scalar("Episode/Return Eval", score, self.episode)
 
     def train(self, env, episodes):
         returns = []
-        for episode in range(episodes):
+        for _ in range(episodes):
             score = 0
             length = 0
             done, trunc = False, False
@@ -167,13 +168,14 @@ class SAC:
                 score += reward
                 length += 1
             # log episode info
-            self.writer.log_scalar("Episode/Return", score, episode)
-            self.writer.log_scalar("Episode/Length", length, episode)
+            self.writer.log_scalar("Episode/Return", score, self.episode)
+            self.writer.log_scalar("Episode/Length", length, self.episode)
             # store episode return
             returns.append(score)
             plot_return(returns, f'Soft Actor Critic (SAC) ({device})')
             # Evaluation
-            if (episode + 1) % 20 == 0: self.evaluate(env, episode)
+            if (self.episode + 1) % 20 == 0: self.evaluate(env)
+            self.episode += 1
         env.close()
         self.writer.close()
         return returns
