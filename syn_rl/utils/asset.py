@@ -1,9 +1,10 @@
+import numpy as np
 import torch
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
 def map_to_range(action, range):
-    min_val, max_val = range
+    min_val, max_val = np.array(range)
     mapped_action = ((action + 1) / 2) * (max_val - min_val) + min_val
     return mapped_action
 
