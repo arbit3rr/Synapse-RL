@@ -14,18 +14,19 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 
 class PPO:
     def __init__(self, state_size, action_size, action_range, hidden_dim=[128], 
-                 gamma=0.99, lam=0.95, lr=3e-4, clip_ratio=0.1, policy_update_freq=100, buffer_size=2e3, batch_size=64):
+                gamma=0.99, lam=0.95, lr=3e-4, policy_update_freq=100, buffer_size=2e3, batch_size=64):
         self.state_size = state_size
         self.action_size = action_size
         self.action_range = action_range
         self.gamma = gamma
         self.lam = lam
         self.lr = lr
-        self.clip_ratio = clip_ratio
         self.policy_update_freq = policy_update_freq
         self.buffer_size = buffer_size
         self.batch_size = batch_size
         self.memory = ExpBuffer(buffer_size)
+        self.beta = 1.0  # Initial KL penalty coefficient; tune as needed
+        self.target_kl = 0.01  # Target KL divergence; common default, tune based on env
 
         # Actor (policy)
         self.policy = GaussianPolicyNetwork(state_size, action_size, hidden_dim).to(device)
@@ -45,13 +46,12 @@ class PPO:
         self.iter = 0
         self.best_avg_reward = -np.inf
         
-
+        
     def learn(self):
         if len(self.memory) < self.batch_size:
             return
         # Read from replay buffer
         states, actions, old_log_probs, rewards, next_states, dones = self.memory.sample(batch_size=self.batch_size, return_all=False, keep_order=True)
-        # states, actions, old_log_probs, rewards, dones = zip(*self.memory.buffer)
 
         # Convert data to PyTorch tensors
         states = torch.tensor(states, dtype=torch.float32).to(device)
@@ -83,10 +83,11 @@ class PPO:
         action_log_probs, entropy = self.policy.evaluate(states, actions)
         ratios = torch.exp(action_log_probs - old_log_probs)
 
-        # PPO Clipped Objective
-        surr1 = ratios * advantages
-        surr2 = torch.clamp(ratios, 1-self.clip_ratio, 1+self.clip_ratio) * advantages
-        policy_loss = -torch.min(surr1, surr2).mean()
+        # PPO-Penalty Objective (unclipped surrogate + KL penalty)
+        surrogate = ratios * advantages
+        policy_surrogate = -surrogate.mean()  # Negative for minimization (since we maximize surrogate)
+        approx_kl = (old_log_probs - action_log_probs).mean()  # Approx KL(old || new)
+        policy_loss = policy_surrogate + self.beta * approx_kl
         
         # Entropy regularization
         entropy_coef = 0.01  # Adjust this value to control exploration
@@ -98,10 +99,21 @@ class PPO:
         total_policy_loss.backward()
         self.policy_optimizer.step()
 
+        # Adapt beta based on post-update KL
+        with torch.no_grad():
+            post_action_log_probs, _ = self.policy.evaluate(states, actions)
+            post_kl = (old_log_probs - post_action_log_probs).mean().item()
+        if post_kl > self.target_kl * 1.5:
+            self.beta *= 1.5
+        elif post_kl < self.target_kl / 1.5:
+            self.beta /= 1.5
+
         # write loss values
         self.writer.log_scalar("Loss/Policy", policy_loss, self.iter)
         self.writer.log_scalar("Loss/Entropy", entropy_loss, self.iter)
         self.writer.log_scalar("Loss/Value", value_loss, self.iter)
+        self.writer.log_scalar("KL/Approx", approx_kl, self.iter)  # Optional: log for monitoring
+        self.writer.log_scalar("Beta", self.beta, self.iter)  # Optional: log for monitoring
         self.iter += 1
 
 
