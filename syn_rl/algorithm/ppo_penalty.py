@@ -103,10 +103,7 @@ class PPO_PENALTY:
         with torch.no_grad():
             post_action_log_probs, _ = self.policy.evaluate(states, actions)
             post_kl = (old_log_probs - post_action_log_probs).mean().item()
-        if post_kl > self.target_kl * 1.5:
-            self.beta *= 1.5
-        elif post_kl < self.target_kl / 1.5:
-            self.beta /= 1.5
+            self.beta = self.beta*1.5 if post_kl > self.target_kl else self.beta/1.5
 
         # write loss values
         self.writer.log_scalar("Loss/Policy", policy_loss, self.iter)
