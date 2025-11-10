@@ -6,3 +6,4 @@ from .algorithm.sac import SAC
 from .algorithm.sac_v import SAC_VALUE
 from .algorithm.ppo import PPO
 from .algorithm.ppo_ep import PPO_EP
+from .algorithm.ppo_penalty import PPO_PENALTY

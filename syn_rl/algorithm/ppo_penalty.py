@@ -12,7 +12,7 @@ from ..utils.logger import TensorboardWriter
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
-class PPO:
+class PPO_PENALTY:
     def __init__(self, state_size, action_size, action_range, hidden_dim=[128], 
                 gamma=0.99, lam=0.95, lr=3e-4, policy_update_freq=100, buffer_size=2e3, batch_size=64):
         self.state_size = state_size
