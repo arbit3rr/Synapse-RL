@@ -97,13 +97,18 @@ class PPO_PENALTY:
         # Update Actor Network
         self.policy_optimizer.zero_grad()
         total_policy_loss.backward()
+        torch.nn.utils.clip_grad_norm_(self.policy.parameters(), max_norm=0.5)  # try 0.5 or 1.0
         self.policy_optimizer.step()
 
         # Adapt beta based on post-update KL
         with torch.no_grad():
             post_action_log_probs, _ = self.policy.evaluate(states, actions)
             post_kl = (old_log_probs - post_action_log_probs).mean().item()
-            self.beta = self.beta*1.5 if post_kl > self.target_kl else self.beta/1.5
+            self.beta = float(self.beta)
+            if post_kl > self.target_kl:
+                self.beta = min(self.beta * 1.5, 1e6)
+            else:
+                self.beta = max(self.beta / 1.5, 1e-6)
 
         # write loss values
         self.writer.log_scalar("Loss/Policy", policy_loss, self.iter)
