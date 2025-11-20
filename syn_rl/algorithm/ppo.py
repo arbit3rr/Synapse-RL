@@ -44,7 +44,7 @@ class PPO:
 
         # Optimizers
         self.policy_optimizer = optim.Adam(self.policy.parameters(), lr=self.lr, weight_decay=1e-4)
-        self.value_optimizer = optim.Adam(self.value.parameters(), lr=3*self.lr, weight_decay=1e-4)
+        self.value_optimizer = optim.Adam(self.value.parameters(), lr=self.lr, weight_decay=1e-4)
 
         # Log writer
         self.writer = TensorboardWriter(log_dir="Logs/PPO", comment="PPO")
