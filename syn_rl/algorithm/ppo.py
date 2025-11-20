@@ -17,8 +17,10 @@ class PPO:
                  gamma=0.99, lam=0.95, lr=3e-4, policy_update_freq=100, buffer_size=2e3, batch_size=64, 
                  alg='clip', clip_ratio=0.1, beta=100.0, target_kl=1):
         
+        # check algorithm type
         assert alg in ['clip', 'penalty'], "Algorithm must be either 'clip' or 'penalty'"
-        
+
+        # Initialize parameters
         self.state_size = state_size
         self.action_size = action_size
         self.action_range = action_range
