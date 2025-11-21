@@ -15,7 +15,7 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 class PPO:
     def __init__(self, state_size, action_size, action_range, hidden_dim=[128], 
                  gamma=0.99, lam=0.95, lr=3e-4, policy_update_freq=100, buffer_size=2e3, batch_size=64, 
-                 alg='clip', clip_ratio=0.1, beta=100.0, target_kl=1):
+                 alg='clip', clip_ratio=0.1, beta=1.0, target_kl=0.1):
         
         # check algorithm type
         assert alg in ['clip', 'penalty'], "Algorithm must be either 'clip' or 'penalty'"
@@ -123,7 +123,7 @@ class PPO:
             # Update Actor Network
             self.policy_optimizer.zero_grad()
             total_policy_loss.backward()
-            torch.nn.utils.clip_grad_norm_(self.policy.parameters(), max_norm=0.5)  # try 0.5 or 1.0
+            # torch.nn.utils.clip_grad_norm_(self.policy.parameters(), max_norm=0.5)  # try 0.5 or 1.0
             self.policy_optimizer.step()
             # Adapt beta based on post-update KL
             with torch.no_grad():
