@@ -46,7 +46,7 @@ class SAC:
         self.QNet2_optimizer = optim.Adam(self.QNet2.parameters(), lr=self.lr, weight_decay=1e-4)
 
         # Logging
-        self.writer = TensorboardWriter(log_dir="Logs/SAC", comment="SAC")
+        self.writer = TensorboardWriter(log_dir="Logs/SAC")
         self.episode = 0
         self.iter = 0
         self.best_avg_reward = -np.inf

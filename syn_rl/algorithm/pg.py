@@ -21,7 +21,7 @@ class PolicyGradient:
         # optimizer
         self.optimizer = optim.Adam(self.policy_network.parameters(), lr=self.lr, weight_decay=1e-4)
         # log writer
-        self.writer = TensorboardWriter(log_dir="Logs/PG", comment="PG")
+        self.writer = TensorboardWriter(log_dir="Logs/PG")
         self.iter = 0
 
     def push_memory(self, action_log_prob, reward):

@@ -1,9 +1,27 @@
+import os
 from torch.utils.tensorboard import SummaryWriter
 
 class TensorboardWriter:
-    def __init__(self, log_dir="runs", comment=""):
-        # Initialize the SummaryWriter with a log directory and optional comment
-        self.writer = SummaryWriter(log_dir=log_dir, comment=comment)
+    def __init__(self, log_dir="runs"):
+        # Auto-increment run number: Logs/PIC-PPO -> Logs/PIC-PPO-1, PIC-PPO-2, ...
+        run_dir = self._next_run_dir(log_dir)
+        self.writer = SummaryWriter(log_dir=run_dir)
+
+    def _next_run_dir(self, log_dir):
+        parent = os.path.dirname(log_dir)
+        base = os.path.basename(log_dir)
+        if not os.path.exists(parent):
+            return os.path.join(parent, f"{base}-1")
+        existing = [
+            d for d in os.listdir(parent)
+            if os.path.isdir(os.path.join(parent, d)) and d.startswith(base)
+        ]
+        max_num = 0
+        for d in existing:
+            suffix = d[len(base):]
+            if suffix.startswith("-") and suffix[1:].isdigit():
+                max_num = max(max_num, int(suffix[1:]))
+        return os.path.join(parent, f"{base}-{max_num + 1}")
     
     def log_scalar(self, tag, value, step):
         # Log a scalar value (e.g., loss, reward)
@@ -22,20 +40,4 @@ class TensorboardWriter:
         self.writer.add_text(tag, text_string, step)
     
     def close(self):
-        # Close the writer
         self.writer.close()
-
-
-'''
-# Logging scalar values (e.g., loss)
-writer.log_scalar("loss", loss_value, step)
-
-# Logging histograms (e.g., model parameters)
-writer.log_histogram("weights/layer1", model.layer1.weight, step)
-
-# Logging images (e.g., input observations)
-writer.log_image("input_state", state_image, step)
-
-# Logging text (e.g., model summary or comments)
-writer.log_text("model_info", "This is a test model", step)
-'''

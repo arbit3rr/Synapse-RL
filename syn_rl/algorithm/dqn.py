@@ -29,7 +29,7 @@ class DQN:
         # optimizer
         self.optimizer = optim.Adam(self.q_network.parameters(), lr=self.lr, weight_decay=1e-4)
         # log writer
-        self.writer = TensorboardWriter(log_dir="Logs/DQN", comment="DQN")
+        self.writer = TensorboardWriter(log_dir="Logs/DQN")
         self.iter = 0
 
     def learn(self):

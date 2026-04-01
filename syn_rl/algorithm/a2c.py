@@ -25,7 +25,7 @@ class ActorCritic:
         self.actor_optimizer = optim.Adam(self.actor.parameters(), lr=lr, weight_decay=1e-4)
         self.critic_optimizer = optim.Adam(self.critic.parameters(), lr=lr, weight_decay=1e-4)
         # log writer
-        self.writer = TensorboardWriter(log_dir="Logs/A2C", comment="A2C")
+        self.writer = TensorboardWriter(log_dir="Logs/A2C")
         self.iter = 0
 
     def push_memory(self, state, action_log_prob, reward, next_state, done):

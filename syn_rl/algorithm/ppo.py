@@ -49,7 +49,7 @@ class PPO:
         self.value_optimizer = optim.Adam(self.value.parameters(), lr=self.lr, weight_decay=1e-4)
 
         # Log writer
-        self.writer = TensorboardWriter(log_dir="Logs/PPO", comment="PPO")
+        self.writer = TensorboardWriter(log_dir="Logs/PPO")
         self.episode = 0
         self.iter = 0
         self.best_avg_reward = -np.inf

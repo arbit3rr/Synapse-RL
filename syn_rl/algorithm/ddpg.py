@@ -35,7 +35,7 @@ class DDPG:
         self.actor_optimizer = optim.Adam(self.actor.parameters(), lr=self.lr, weight_decay=1e-4)
         self.critic_optimizer = optim.Adam(self.critic.parameters(), lr=self.lr, weight_decay=1e-4)
         # log writer
-        self.writer = TensorboardWriter(log_dir="Logs/DDPG", comment="DDPG")
+        self.writer = TensorboardWriter(log_dir="Logs/DDPG")
         self.episode = 0
         self.iter = 0
 

@@ -37,7 +37,7 @@ class SAC_VALUE:
         self.QNet1_optimizer = optim.Adam(self.QNet1.parameters(), lr=self.lr, weight_decay=1e-4)
         self.QNet2_optimizer = optim.Adam(self.QNet2.parameters(), lr=self.lr, weight_decay=1e-4)
         # log writer
-        self.writer = TensorboardWriter(log_dir="Logs/SAC_VALUE", comment="SAC_VALUE")
+        self.writer = TensorboardWriter(log_dir="Logs/SAC_VALUE")
         self.iter = 0
 
     def learn(self):
