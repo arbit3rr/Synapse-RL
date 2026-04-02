@@ -110,8 +110,7 @@ class DDPG:
         # Save best model
         if score > self.best_avg_reward:
             self.best_avg_reward = score
-            torch.save(self.actor.state_dict(), "Logs/DDPG_best_actor.pth")
-            print(f"New best model saved with average reward: {self.best_avg_reward}")
+            self.save_checkpoint("Logs/DDPG_best_checkpoint.pth")
         # Log episode reward
         self.writer.log_scalar("Episode/Return Eval", score, self.episode)
 
