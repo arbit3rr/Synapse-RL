@@ -70,6 +70,7 @@ class ActorCritic:
         self.memory = []
 
     def train(self, env, episodes):
+        self.writer.start()
         returns = []
         for episode in range(episodes):
             score = 0
@@ -97,7 +98,7 @@ class ActorCritic:
             returns.append(score)
             plot_return(returns, f'Actor Critic ({device})')
         env.close()
-        self.writer.close()
+        self.writer.stop()
         return returns
 
     def save_checkpoint(self, filepath="Logs/A2C_checkpoint.pth"):

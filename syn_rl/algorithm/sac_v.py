@@ -103,6 +103,7 @@ class SAC_VALUE:
         
 
     def train(self, env, episodes):
+        self.writer.start()
         returns = []
         for episode in range(episodes):
             score = 0
@@ -135,7 +136,7 @@ class SAC_VALUE:
             returns.append(score)
             plot_return(returns, f'Soft Actor Critic (SAC) ({device})')
         env.close()
-        self.writer.close()
+        self.writer.stop()
         return returns
 
     def save_checkpoint(self, filepath="Logs/SAC_VALUE_checkpoint.pth"):

@@ -6,11 +6,9 @@ class TensorboardWriter:
         self._log_dir = log_dir
         self._writer = None
 
-    def _get_writer(self):
-        if self._writer is None:
-            run_dir = self._next_run_dir(self._log_dir)
-            self._writer = SummaryWriter(log_dir=run_dir)
-        return self._writer
+    def start(self):
+        run_dir = self._next_run_dir(self._log_dir)
+        self._writer = SummaryWriter(log_dir=run_dir)
 
     def _next_run_dir(self, log_dir):
         parent = os.path.dirname(log_dir)
@@ -29,17 +27,17 @@ class TensorboardWriter:
         return os.path.join(parent, f"{base}-{max_num + 1}")
     
     def log_scalar(self, tag, value, step):
-        self._get_writer().add_scalar(tag, value, step)
+        self._writer.add_scalar(tag, value, step)
     
     def log_histogram(self, tag, values, step):
-        self._get_writer().add_histogram(tag, values, step)
+        self._writer.add_histogram(tag, values, step)
     
     def log_image(self, tag, img_tensor, step):
-        self._get_writer().add_image(tag, img_tensor, step)
+        self._writer.add_image(tag, img_tensor, step)
     
     def log_text(self, tag, text_string, step):
-        self._get_writer().add_text(tag, text_string, step)
+        self._writer.add_text(tag, text_string, step)
     
-    def close(self):
+    def stop(self):
         if self._writer is not None:
             self._writer.close()

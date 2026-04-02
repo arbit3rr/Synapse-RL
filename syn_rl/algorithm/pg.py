@@ -51,6 +51,7 @@ class PolicyGradient:
         self.memory = []
 
     def train(self, env, episodes):
+        self.writer.start()
         returns = []
         for episode in range(episodes):
             score = 0
@@ -78,7 +79,7 @@ class PolicyGradient:
             returns.append(score)
             plot_return(returns, f'Policy Gradient ({device})')
         env.close()
-        self.writer.close()
+        self.writer.stop()
         return returns
 
     def save_checkpoint(self, filepath="Logs/PG_checkpoint.pth"):

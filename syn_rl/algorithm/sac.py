@@ -142,6 +142,7 @@ class SAC:
         self.writer.log_scalar("Episode/Return Eval", score, self.episode)
 
     def train(self, env, episodes):
+        self.writer.start()
         returns = []
         for _ in range(episodes):
             score = 0
@@ -177,7 +178,7 @@ class SAC:
             if (self.episode + 1) % 20 == 0: self.evaluate(env)
             self.episode += 1
         env.close()
-        self.writer.close()
+        self.writer.stop()
         return returns
 
     def save_checkpoint(self, filepath="Logs/SAC_checkpoint.pth"):

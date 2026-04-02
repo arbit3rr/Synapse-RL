@@ -77,6 +77,7 @@ class DQN:
             self.q_network.epsilon *= self.epsilon_decay
 
     def train(self, env, episodes):
+        self.writer.start()
         returns = []
         for episode in range(episodes):
             score = 0
@@ -109,7 +110,7 @@ class DQN:
             returns.append(score)
             plot_return(returns, f'Deep Q Learning ({device})')
         env.close()
-        self.writer.close()
+        self.writer.stop()
         return returns
 
     def save_checkpoint(self, filepath="Logs/DQN_checkpoint.pth"):

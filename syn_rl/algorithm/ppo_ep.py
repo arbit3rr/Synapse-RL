@@ -107,6 +107,7 @@ class PPO_EP:
 
 
     def train(self, env, episodes):
+        self.writer.start()
         returns = []
         for episode in range(episodes):
             score = 0
@@ -141,7 +142,7 @@ class PPO_EP:
             plot_return(returns, f'Proximal Policy Optimization (PPO) ({device})')
 
         env.close()
-        self.writer.close()
+        self.writer.stop()
         return returns
 
     def save_checkpoint(self, filepath="Logs/PPO_EP_checkpoint.pth"):
