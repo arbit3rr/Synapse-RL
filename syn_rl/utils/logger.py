@@ -3,9 +3,14 @@ from torch.utils.tensorboard import SummaryWriter
 
 class TensorboardWriter:
     def __init__(self, log_dir="runs"):
-        # Auto-increment run number: Logs/PIC-PPO -> Logs/PIC-PPO-1, PIC-PPO-2, ...
-        run_dir = self._next_run_dir(log_dir)
-        self.writer = SummaryWriter(log_dir=run_dir)
+        self._log_dir = log_dir
+        self._writer = None
+
+    def _get_writer(self):
+        if self._writer is None:
+            run_dir = self._next_run_dir(self._log_dir)
+            self._writer = SummaryWriter(log_dir=run_dir)
+        return self._writer
 
     def _next_run_dir(self, log_dir):
         parent = os.path.dirname(log_dir)
@@ -24,20 +29,17 @@ class TensorboardWriter:
         return os.path.join(parent, f"{base}-{max_num + 1}")
     
     def log_scalar(self, tag, value, step):
-        # Log a scalar value (e.g., loss, reward)
-        self.writer.add_scalar(tag, value, step)
+        self._get_writer().add_scalar(tag, value, step)
     
     def log_histogram(self, tag, values, step):
-        # Log a histogram (e.g., weight distributions)
-        self.writer.add_histogram(tag, values, step)
+        self._get_writer().add_histogram(tag, values, step)
     
     def log_image(self, tag, img_tensor, step):
-        # Log an image (e.g., state observations)
-        self.writer.add_image(tag, img_tensor, step)
+        self._get_writer().add_image(tag, img_tensor, step)
     
     def log_text(self, tag, text_string, step):
-        # Log text information
-        self.writer.add_text(tag, text_string, step)
+        self._get_writer().add_text(tag, text_string, step)
     
     def close(self):
-        self.writer.close()
+        if self._writer is not None:
+            self._writer.close()
