@@ -1,3 +1,4 @@
+import os
 import torch
 import torch.optim as optim
 import torch.nn.functional as F
@@ -212,3 +213,32 @@ class PPO:
         env.close()
         self.writer.close()
         return returns
+
+    def save_checkpoint(self, filepath="Logs/PPO_checkpoint.pth"):
+        os.makedirs(os.path.dirname(filepath), exist_ok=True)
+        checkpoint = {
+            'policy_state_dict': self.policy.state_dict(),
+            'policy_old_state_dict': self.policy_old.state_dict(),
+            'value_state_dict': self.value.state_dict(),
+            'policy_optimizer_state_dict': self.policy_optimizer.state_dict(),
+            'value_optimizer_state_dict': self.value_optimizer.state_dict(),
+            'episode': self.episode,
+            'iter': self.iter,
+            'best_avg_reward': self.best_avg_reward,
+            'beta': self.beta,
+        }
+        torch.save(checkpoint, filepath)
+        print(f"Checkpoint saved to {filepath}")
+
+    def load_checkpoint(self, filepath="Logs/PPO_checkpoint.pth"):
+        checkpoint = torch.load(filepath, map_location=device, weights_only=False)
+        self.policy.load_state_dict(checkpoint['policy_state_dict'])
+        self.policy_old.load_state_dict(checkpoint['policy_old_state_dict'])
+        self.value.load_state_dict(checkpoint['value_state_dict'])
+        self.policy_optimizer.load_state_dict(checkpoint['policy_optimizer_state_dict'])
+        self.value_optimizer.load_state_dict(checkpoint['value_optimizer_state_dict'])
+        self.episode = checkpoint['episode']
+        self.iter = checkpoint['iter']
+        self.best_avg_reward = checkpoint['best_avg_reward']
+        self.beta = checkpoint['beta']
+        print(f"Checkpoint loaded from {filepath} (episode={self.episode}, iter={self.iter})")

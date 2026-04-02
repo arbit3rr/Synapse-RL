@@ -1,3 +1,4 @@
+import os
 import torch
 import torch.optim as optim
 import torch.nn.functional as F
@@ -136,3 +137,34 @@ class SAC_VALUE:
         env.close()
         self.writer.close()
         return returns
+
+    def save_checkpoint(self, filepath="Logs/SAC_VALUE_checkpoint.pth"):
+        os.makedirs(os.path.dirname(filepath), exist_ok=True)
+        checkpoint = {
+            'actor_state_dict': self.actor.state_dict(),
+            'valueNet_state_dict': self.valueNet.state_dict(),
+            'target_valueNet_state_dict': self.target_valueNet.state_dict(),
+            'QNet1_state_dict': self.QNet1.state_dict(),
+            'QNet2_state_dict': self.QNet2.state_dict(),
+            'actor_optimizer_state_dict': self.actor_optimizer.state_dict(),
+            'valueNet_optimizer_state_dict': self.valueNet_optimizer.state_dict(),
+            'QNet1_optimizer_state_dict': self.QNet1_optimizer.state_dict(),
+            'QNet2_optimizer_state_dict': self.QNet2_optimizer.state_dict(),
+            'iter': self.iter,
+        }
+        torch.save(checkpoint, filepath)
+        print(f"Checkpoint saved to {filepath}")
+
+    def load_checkpoint(self, filepath="Logs/SAC_VALUE_checkpoint.pth"):
+        checkpoint = torch.load(filepath, map_location=device, weights_only=False)
+        self.actor.load_state_dict(checkpoint['actor_state_dict'])
+        self.valueNet.load_state_dict(checkpoint['valueNet_state_dict'])
+        self.target_valueNet.load_state_dict(checkpoint['target_valueNet_state_dict'])
+        self.QNet1.load_state_dict(checkpoint['QNet1_state_dict'])
+        self.QNet2.load_state_dict(checkpoint['QNet2_state_dict'])
+        self.actor_optimizer.load_state_dict(checkpoint['actor_optimizer_state_dict'])
+        self.valueNet_optimizer.load_state_dict(checkpoint['valueNet_optimizer_state_dict'])
+        self.QNet1_optimizer.load_state_dict(checkpoint['QNet1_optimizer_state_dict'])
+        self.QNet2_optimizer.load_state_dict(checkpoint['QNet2_optimizer_state_dict'])
+        self.iter = checkpoint['iter']
+        print(f"Checkpoint loaded from {filepath} (iter={self.iter})")

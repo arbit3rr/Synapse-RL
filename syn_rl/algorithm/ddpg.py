@@ -1,3 +1,4 @@
+import os
 import torch
 import torch.optim as optim
 import torch.nn.functional as F
@@ -153,3 +154,34 @@ class DDPG:
         env.close()
         self.writer.close()
         return returns
+
+    def save_checkpoint(self, filepath="Logs/DDPG_checkpoint.pth"):
+        os.makedirs(os.path.dirname(filepath), exist_ok=True)
+        checkpoint = {
+            'actor_state_dict': self.actor.state_dict(),
+            'target_actor_state_dict': self.target_actor.state_dict(),
+            'critic_state_dict': self.critic.state_dict(),
+            'target_critic_state_dict': self.target_critic.state_dict(),
+            'actor_optimizer_state_dict': self.actor_optimizer.state_dict(),
+            'critic_optimizer_state_dict': self.critic_optimizer.state_dict(),
+            'actor_uncertainty': self.actor.uncertainty,
+            'episode': self.episode,
+            'iter': self.iter,
+            'best_avg_reward': self.best_avg_reward,
+        }
+        torch.save(checkpoint, filepath)
+        print(f"Checkpoint saved to {filepath}")
+
+    def load_checkpoint(self, filepath="Logs/DDPG_checkpoint.pth"):
+        checkpoint = torch.load(filepath, map_location=device, weights_only=False)
+        self.actor.load_state_dict(checkpoint['actor_state_dict'])
+        self.target_actor.load_state_dict(checkpoint['target_actor_state_dict'])
+        self.critic.load_state_dict(checkpoint['critic_state_dict'])
+        self.target_critic.load_state_dict(checkpoint['target_critic_state_dict'])
+        self.actor_optimizer.load_state_dict(checkpoint['actor_optimizer_state_dict'])
+        self.critic_optimizer.load_state_dict(checkpoint['critic_optimizer_state_dict'])
+        self.actor.uncertainty = checkpoint['actor_uncertainty']
+        self.episode = checkpoint['episode']
+        self.iter = checkpoint['iter']
+        self.best_avg_reward = checkpoint['best_avg_reward']
+        print(f"Checkpoint loaded from {filepath} (episode={self.episode}, iter={self.iter})")

@@ -1,3 +1,4 @@
+import os
 import torch
 import torch.optim as optim
 import torch.nn.functional as F
@@ -179,3 +180,42 @@ class SAC:
         env.close()
         self.writer.close()
         return returns
+
+    def save_checkpoint(self, filepath="Logs/SAC_checkpoint.pth"):
+        os.makedirs(os.path.dirname(filepath), exist_ok=True)
+        checkpoint = {
+            'actor_state_dict': self.actor.state_dict(),
+            'QNet1_state_dict': self.QNet1.state_dict(),
+            'QNet2_state_dict': self.QNet2.state_dict(),
+            'target_QNet1_state_dict': self.target_QNet1.state_dict(),
+            'target_QNet2_state_dict': self.target_QNet2.state_dict(),
+            'actor_optimizer_state_dict': self.actor_optimizer.state_dict(),
+            'QNet1_optimizer_state_dict': self.QNet1_optimizer.state_dict(),
+            'QNet2_optimizer_state_dict': self.QNet2_optimizer.state_dict(),
+            'alpha_optimizer_state_dict': self.alpha_optimizer.state_dict(),
+            'log_alpha': self.log_alpha.detach().cpu(),
+            'episode': self.episode,
+            'iter': self.iter,
+            'best_avg_reward': self.best_avg_reward,
+        }
+        torch.save(checkpoint, filepath)
+        print(f"Checkpoint saved to {filepath}")
+
+    def load_checkpoint(self, filepath="Logs/SAC_checkpoint.pth"):
+        checkpoint = torch.load(filepath, map_location=device, weights_only=False)
+        self.actor.load_state_dict(checkpoint['actor_state_dict'])
+        self.QNet1.load_state_dict(checkpoint['QNet1_state_dict'])
+        self.QNet2.load_state_dict(checkpoint['QNet2_state_dict'])
+        self.target_QNet1.load_state_dict(checkpoint['target_QNet1_state_dict'])
+        self.target_QNet2.load_state_dict(checkpoint['target_QNet2_state_dict'])
+        self.actor_optimizer.load_state_dict(checkpoint['actor_optimizer_state_dict'])
+        self.QNet1_optimizer.load_state_dict(checkpoint['QNet1_optimizer_state_dict'])
+        self.QNet2_optimizer.load_state_dict(checkpoint['QNet2_optimizer_state_dict'])
+        self.alpha_optimizer.load_state_dict(checkpoint['alpha_optimizer_state_dict'])
+        self.log_alpha = checkpoint['log_alpha'].to(device).requires_grad_(True)
+        self.alpha_optimizer = optim.Adam([self.log_alpha], lr=self.lr)
+        self.alpha_optimizer.load_state_dict(checkpoint['alpha_optimizer_state_dict'])
+        self.episode = checkpoint['episode']
+        self.iter = checkpoint['iter']
+        self.best_avg_reward = checkpoint['best_avg_reward']
+        print(f"Checkpoint loaded from {filepath} (episode={self.episode}, iter={self.iter})")

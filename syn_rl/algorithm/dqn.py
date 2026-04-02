@@ -1,3 +1,4 @@
+import os
 import torch
 import torch.optim as optim
 import torch.nn.functional as F
@@ -110,3 +111,24 @@ class DQN:
         env.close()
         self.writer.close()
         return returns
+
+    def save_checkpoint(self, filepath="Logs/DQN_checkpoint.pth"):
+        os.makedirs(os.path.dirname(filepath), exist_ok=True)
+        checkpoint = {
+            'q_network_state_dict': self.q_network.state_dict(),
+            'target_network_state_dict': self.target_network.state_dict(),
+            'optimizer_state_dict': self.optimizer.state_dict(),
+            'epsilon': self.q_network.epsilon,
+            'iter': self.iter,
+        }
+        torch.save(checkpoint, filepath)
+        print(f"Checkpoint saved to {filepath}")
+
+    def load_checkpoint(self, filepath="Logs/DQN_checkpoint.pth"):
+        checkpoint = torch.load(filepath, map_location=device, weights_only=False)
+        self.q_network.load_state_dict(checkpoint['q_network_state_dict'])
+        self.target_network.load_state_dict(checkpoint['target_network_state_dict'])
+        self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+        self.q_network.epsilon = checkpoint['epsilon']
+        self.iter = checkpoint['iter']
+        print(f"Checkpoint loaded from {filepath} (iter={self.iter}, epsilon={self.q_network.epsilon:.4f})")
