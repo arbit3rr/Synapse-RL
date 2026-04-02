@@ -107,7 +107,8 @@ class PPO_EP:
 
 
     def train(self, env, episodes):
-        self.writer.start()
+        if self.writer.run_dir is None:
+            self.writer.start()
         returns = []
         for episode in range(episodes):
             score = 0
@@ -155,6 +156,7 @@ class PPO_EP:
             'value_optimizer_state_dict': self.value_optimizer.state_dict(),
             'iter': self.iter,
             'best_avg_reward': self.best_avg_reward,
+            'log_run_dir': self.writer.run_dir,
         }
         torch.save(checkpoint, filepath)
         print(f"Checkpoint saved to {filepath}")
@@ -168,4 +170,6 @@ class PPO_EP:
         self.value_optimizer.load_state_dict(checkpoint['value_optimizer_state_dict'])
         self.iter = checkpoint['iter']
         self.best_avg_reward = checkpoint['best_avg_reward']
+        if 'log_run_dir' in checkpoint:
+            self.writer.start(resume_dir=checkpoint['log_run_dir'])
         print(f"Checkpoint loaded from {filepath} (iter={self.iter})")

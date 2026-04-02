@@ -77,7 +77,8 @@ class DQN:
             self.q_network.epsilon *= self.epsilon_decay
 
     def train(self, env, episodes):
-        self.writer.start()
+        if self.writer.run_dir is None:
+            self.writer.start()
         returns = []
         for episode in range(episodes):
             score = 0
@@ -121,6 +122,7 @@ class DQN:
             'optimizer_state_dict': self.optimizer.state_dict(),
             'epsilon': self.q_network.epsilon,
             'iter': self.iter,
+            'log_run_dir': self.writer.run_dir,
         }
         torch.save(checkpoint, filepath)
         print(f"Checkpoint saved to {filepath}")
@@ -132,4 +134,6 @@ class DQN:
         self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         self.q_network.epsilon = checkpoint['epsilon']
         self.iter = checkpoint['iter']
+        if 'log_run_dir' in checkpoint:
+            self.writer.start(resume_dir=checkpoint['log_run_dir'])
         print(f"Checkpoint loaded from {filepath} (iter={self.iter}, epsilon={self.q_network.epsilon:.4f})")

@@ -51,7 +51,8 @@ class PolicyGradient:
         self.memory = []
 
     def train(self, env, episodes):
-        self.writer.start()
+        if self.writer.run_dir is None:
+            self.writer.start()
         returns = []
         for episode in range(episodes):
             score = 0
@@ -88,6 +89,7 @@ class PolicyGradient:
             'policy_network_state_dict': self.policy_network.state_dict(),
             'optimizer_state_dict': self.optimizer.state_dict(),
             'iter': self.iter,
+            'log_run_dir': self.writer.run_dir,
         }
         torch.save(checkpoint, filepath)
         print(f"Checkpoint saved to {filepath}")
@@ -97,4 +99,6 @@ class PolicyGradient:
         self.policy_network.load_state_dict(checkpoint['policy_network_state_dict'])
         self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         self.iter = checkpoint['iter']
+        if 'log_run_dir' in checkpoint:
+            self.writer.start(resume_dir=checkpoint['log_run_dir'])
         print(f"Checkpoint loaded from {filepath} (iter={self.iter})")

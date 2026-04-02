@@ -142,7 +142,8 @@ class SAC:
         self.writer.log_scalar("Episode/Return Eval", score, self.episode)
 
     def train(self, env, episodes):
-        self.writer.start()
+        if self.writer.run_dir is None:
+            self.writer.start()
         returns = []
         for _ in range(episodes):
             score = 0
@@ -197,6 +198,7 @@ class SAC:
             'episode': self.episode,
             'iter': self.iter,
             'best_avg_reward': self.best_avg_reward,
+            'log_run_dir': self.writer.run_dir,
         }
         torch.save(checkpoint, filepath)
         print(f"Checkpoint saved to {filepath}")
@@ -218,4 +220,6 @@ class SAC:
         self.episode = checkpoint['episode']
         self.iter = checkpoint['iter']
         self.best_avg_reward = checkpoint['best_avg_reward']
+        if 'log_run_dir' in checkpoint:
+            self.writer.start(resume_dir=checkpoint['log_run_dir'])
         print(f"Checkpoint loaded from {filepath} (episode={self.episode}, iter={self.iter})")

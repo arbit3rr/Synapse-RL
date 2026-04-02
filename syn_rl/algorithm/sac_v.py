@@ -103,7 +103,8 @@ class SAC_VALUE:
         
 
     def train(self, env, episodes):
-        self.writer.start()
+        if self.writer.run_dir is None:
+            self.writer.start()
         returns = []
         for episode in range(episodes):
             score = 0
@@ -152,6 +153,7 @@ class SAC_VALUE:
             'QNet1_optimizer_state_dict': self.QNet1_optimizer.state_dict(),
             'QNet2_optimizer_state_dict': self.QNet2_optimizer.state_dict(),
             'iter': self.iter,
+            'log_run_dir': self.writer.run_dir,
         }
         torch.save(checkpoint, filepath)
         print(f"Checkpoint saved to {filepath}")
@@ -168,4 +170,6 @@ class SAC_VALUE:
         self.QNet1_optimizer.load_state_dict(checkpoint['QNet1_optimizer_state_dict'])
         self.QNet2_optimizer.load_state_dict(checkpoint['QNet2_optimizer_state_dict'])
         self.iter = checkpoint['iter']
+        if 'log_run_dir' in checkpoint:
+            self.writer.start(resume_dir=checkpoint['log_run_dir'])
         print(f"Checkpoint loaded from {filepath} (iter={self.iter})")

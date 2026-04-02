@@ -4,11 +4,15 @@ from torch.utils.tensorboard import SummaryWriter
 class TensorboardWriter:
     def __init__(self, log_dir="runs"):
         self._log_dir = log_dir
+        self.run_dir = None
         self._writer = None
 
-    def start(self):
-        run_dir = self._next_run_dir(self._log_dir)
-        self._writer = SummaryWriter(log_dir=run_dir)
+    def start(self, resume_dir=None):
+        if resume_dir is not None:
+            self.run_dir = resume_dir
+        else:
+            self.run_dir = self._next_run_dir(self._log_dir)
+        self._writer = SummaryWriter(log_dir=self.run_dir)
 
     def _next_run_dir(self, log_dir):
         parent = os.path.dirname(log_dir)
