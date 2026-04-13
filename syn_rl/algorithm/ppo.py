@@ -167,7 +167,7 @@ class PPO:
         # Save best model
         if score > self.best_avg_reward:
             self.best_avg_reward = score
-            self.save_checkpoint("Logs/PPO_best_checkpoint.pth")
+            self.save_checkpoint(os.path.join(self.writer.run_dir, "best_model.pth"))
         # Log episode reward
         self.writer.log_scalar("Episode/Return Eval", score, self.episode)
 
@@ -215,7 +215,9 @@ class PPO:
         self.writer.stop()
         return returns
 
-    def save_checkpoint(self, filepath="Logs/PPO_checkpoint.pth"):
+    def save_checkpoint(self, filepath=None):
+        if filepath is None:
+            filepath = os.path.join(self.writer.run_dir, "checkpoint.pth")
         os.makedirs(os.path.dirname(filepath), exist_ok=True)
         checkpoint = {
             'policy_state_dict': self.policy.state_dict(),
@@ -232,7 +234,9 @@ class PPO:
         torch.save(checkpoint, filepath)
         print(f"Checkpoint saved to {filepath}")
 
-    def load_checkpoint(self, filepath="Logs/PPO_checkpoint.pth"):
+    def load_checkpoint(self, filepath=None):
+        if filepath is None:
+            filepath = os.path.join(self.writer.run_dir, "checkpoint.pth")
         checkpoint = torch.load(filepath, map_location=device, weights_only=False)
         self.policy.load_state_dict(checkpoint['policy_state_dict'])
         self.policy_old.load_state_dict(checkpoint['policy_old_state_dict'])

@@ -102,7 +102,9 @@ class ActorCritic:
         self.writer.stop()
         return returns
 
-    def save_checkpoint(self, filepath="Logs/A2C_checkpoint.pth"):
+    def save_checkpoint(self, filepath=None):
+        if filepath is None:
+            filepath = os.path.join(self.writer.run_dir, "checkpoint.pth")
         os.makedirs(os.path.dirname(filepath), exist_ok=True)
         checkpoint = {
             'actor_state_dict': self.actor.state_dict(),
@@ -115,7 +117,9 @@ class ActorCritic:
         torch.save(checkpoint, filepath)
         print(f"Checkpoint saved to {filepath}")
 
-    def load_checkpoint(self, filepath="Logs/A2C_checkpoint.pth"):
+    def load_checkpoint(self, filepath=None):
+        if filepath is None:
+            filepath = os.path.join(self.writer.run_dir, "checkpoint.pth")
         checkpoint = torch.load(filepath, map_location=device, weights_only=False)
         self.actor.load_state_dict(checkpoint['actor_state_dict'])
         self.critic.load_state_dict(checkpoint['critic_state_dict'])

@@ -137,7 +137,7 @@ class SAC:
         # Save best model
         if score > self.best_avg_reward:
             self.best_avg_reward = score
-            self.save_checkpoint("Logs/SAC_best_checkpoint.pth")
+            self.save_checkpoint(os.path.join(self.writer.run_dir, "best_model.pth"))
         # Log episode reward
         self.writer.log_scalar("Episode/Return Eval", score, self.episode)
 
@@ -182,7 +182,9 @@ class SAC:
         self.writer.stop()
         return returns
 
-    def save_checkpoint(self, filepath="Logs/SAC_checkpoint.pth"):
+    def save_checkpoint(self, filepath=None):
+        if filepath is None:
+            filepath = os.path.join(self.writer.run_dir, "checkpoint.pth")
         os.makedirs(os.path.dirname(filepath), exist_ok=True)
         checkpoint = {
             'actor_state_dict': self.actor.state_dict(),
@@ -203,7 +205,9 @@ class SAC:
         torch.save(checkpoint, filepath)
         print(f"Checkpoint saved to {filepath}")
 
-    def load_checkpoint(self, filepath="Logs/SAC_checkpoint.pth"):
+    def load_checkpoint(self, filepath=None):
+        if filepath is None:
+            filepath = os.path.join(self.writer.run_dir, "checkpoint.pth")
         checkpoint = torch.load(filepath, map_location=device, weights_only=False)
         self.actor.load_state_dict(checkpoint['actor_state_dict'])
         self.QNet1.load_state_dict(checkpoint['QNet1_state_dict'])

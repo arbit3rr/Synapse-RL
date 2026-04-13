@@ -83,7 +83,9 @@ class PolicyGradient:
         self.writer.stop()
         return returns
 
-    def save_checkpoint(self, filepath="Logs/PG_checkpoint.pth"):
+    def save_checkpoint(self, filepath=None):
+        if filepath is None:
+            filepath = os.path.join(self.writer.run_dir, "checkpoint.pth")
         os.makedirs(os.path.dirname(filepath), exist_ok=True)
         checkpoint = {
             'policy_network_state_dict': self.policy_network.state_dict(),
@@ -94,7 +96,9 @@ class PolicyGradient:
         torch.save(checkpoint, filepath)
         print(f"Checkpoint saved to {filepath}")
 
-    def load_checkpoint(self, filepath="Logs/PG_checkpoint.pth"):
+    def load_checkpoint(self, filepath=None):
+        if filepath is None:
+            filepath = os.path.join(self.writer.run_dir, "checkpoint.pth")
         checkpoint = torch.load(filepath, map_location=device, weights_only=False)
         self.policy_network.load_state_dict(checkpoint['policy_network_state_dict'])
         self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])

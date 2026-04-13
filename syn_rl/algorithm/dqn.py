@@ -114,7 +114,9 @@ class DQN:
         self.writer.stop()
         return returns
 
-    def save_checkpoint(self, filepath="Logs/DQN_checkpoint.pth"):
+    def save_checkpoint(self, filepath=None):
+        if filepath is None:
+            filepath = os.path.join(self.writer.run_dir, "checkpoint.pth")
         os.makedirs(os.path.dirname(filepath), exist_ok=True)
         checkpoint = {
             'q_network_state_dict': self.q_network.state_dict(),
@@ -127,7 +129,9 @@ class DQN:
         torch.save(checkpoint, filepath)
         print(f"Checkpoint saved to {filepath}")
 
-    def load_checkpoint(self, filepath="Logs/DQN_checkpoint.pth"):
+    def load_checkpoint(self, filepath=None):
+        if filepath is None:
+            filepath = os.path.join(self.writer.run_dir, "checkpoint.pth")
         checkpoint = torch.load(filepath, map_location=device, weights_only=False)
         self.q_network.load_state_dict(checkpoint['q_network_state_dict'])
         self.target_network.load_state_dict(checkpoint['target_network_state_dict'])
