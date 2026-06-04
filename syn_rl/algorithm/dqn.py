@@ -67,10 +67,9 @@ class DQN:
         self.writer.log_scalar("Loss/DQN", loss, self.iter)
         self.iter += 1
 
-        # Soft update of the target network's weights
-        # θ′ ← τ θ + (1 −τ )θ′
+        # Soft update of the target network's weights: θ′ ← τ θ + (1−τ) θ′
         for target_param, param in zip(self.target_network.parameters(), self.q_network.parameters()):
-            target_param.data.copy_(self.tau * target_param.data + (1-self.tau) * param.data)
+            target_param.data.copy_(self.tau * param.data + (1 - self.tau) * target_param.data)
 
     def decay_epsilon(self):
         if self.q_network.epsilon > self.epsilon_min:

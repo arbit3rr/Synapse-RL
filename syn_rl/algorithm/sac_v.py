@@ -96,10 +96,9 @@ class SAC_VALUE:
         self.writer.log_scalar("Loss/Q2", Q2_loss, self.iter)
         self.iter += 1
         
-        # Soft update of the target network's weights
-        # θ′ ← τ θ + (1 −τ )θ′
+        # Soft update of the target network's weights: θ′ ← τ θ + (1−τ) θ′
         for target_param, param in zip(self.target_valueNet.parameters(), self.valueNet.parameters()):
-            target_param.data.copy_(self.tau * target_param.data + (1-self.tau) * param.data)
+            target_param.data.copy_(self.tau * param.data + (1 - self.tau) * target_param.data)
         
 
     def train(self, env, episodes):

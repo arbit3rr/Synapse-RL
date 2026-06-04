@@ -39,6 +39,7 @@ class DDPG:
         self.writer = TensorboardWriter(log_dir="Logs/DDPG")
         self.episode = 0
         self.iter = 0
+        self.best_avg_reward = -np.inf
 
     def learn(self):
         if len(self.memory) < self.batch_size:

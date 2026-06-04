@@ -1,26 +1,17 @@
-import numpy as np
-import gymnasium as gym
+from abc import ABC, abstractmethod
 
-class RLAgent:
-    def __init__(self, env, algorithm, num_episodes=1000, max_steps=1000):
-        # extract environment parameters
-        self.env = env
-        self.action_space = env.action_space
-        self.observation_space = env.observation_space
-        # extract algortithm parameters
-        self.algorithm = algorithm
-        self.nn_layers =         
 
-    def train(self):
-        self.algorithm.train(self.env, self.num_episodes, self.max_steps)
+class RLAgent(ABC):
+    """Abstract base class for Synapse-RL agents."""
 
-    def evaluate(self, num_episodes=100):
-        pass
+    @abstractmethod
+    def train(self, env, episodes: int):
+        """Run the training loop for a given number of episodes."""
 
-    def save(self, filename):
-        pass
+    @abstractmethod
+    def save_checkpoint(self, filepath: str = None):
+        """Persist network weights and optimizer state to disk."""
 
-    def load(self, filename):
-        pass
-
-    
+    @abstractmethod
+    def load_checkpoint(self, filepath: str = None):
+        """Restore network weights and optimizer state from disk."""

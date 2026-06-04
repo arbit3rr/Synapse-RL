@@ -17,15 +17,14 @@ def torch_to_np(x):
     return x.squeeze(0).cpu().detach().numpy().ravel()
 
 
-def compute_rewards_to_go(rewards, dones, gamma):
+def compute_rewards_to_go(rewards, gamma, dones=None):
     returns = []
     running_return = 0
-    rewards_flat = rewards.ravel()
-    dones_flat = dones.ravel()
-    # Iterate backwards over rewards and dones
+    rewards_flat = list(rewards.ravel())
+    dones_flat = list(dones.ravel()) if dones is not None else [False] * len(rewards_flat)
     for reward, done in zip(reversed(rewards_flat), reversed(dones_flat)):
         if done:
-            running_return = 0  # Reset at end of trajectory
+            running_return = 0
         running_return = reward + gamma * running_return
         returns.insert(0, running_return)
     return torch.tensor(returns).reshape(rewards.shape)
