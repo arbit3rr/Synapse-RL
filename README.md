@@ -3,7 +3,7 @@
     <img width="100%" src="https://user-images.githubusercontent.com/56114938/235786557-186fe616-f0ab-4a14-95d5-c95817062942.png">
   </a>
   <h1>Synapse-RL</h1>
-  <p>A clean, modular PyTorch library for deep reinforcement learning</p>
+  <p>A modular PyTorch library for deep reinforcement learning</p>
 
   <a href="https://colab.research.google.com/github/amirhosseinh77/Synapse-RL/blob/main/SYNAPES_tutorial.ipynb">
     <img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab">
