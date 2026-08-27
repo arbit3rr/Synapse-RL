@@ -9,13 +9,13 @@ plt.rcParams.update({
     'font.family': 'serif',
     'font.serif': ['DejaVu Serif', 'Times New Roman', 'STIXGeneral'],
     'mathtext.fontset': 'cm',
-    'font.size': 12,
-    'axes.titlesize': 13,
-    'axes.labelsize': 14,
-    'xtick.labelsize': 12,
-    'ytick.labelsize': 12,
-    'legend.fontsize': 11,
-    'axes.linewidth': 0.8,
+    'font.size': 10,
+    'axes.titlesize': 12,
+    'axes.labelsize': 13,
+    'xtick.labelsize': 10,
+    'ytick.labelsize': 10,
+    'legend.fontsize': 8,
+    'axes.linewidth': 0.7,
     'axes.edgecolor': '#333333',
     'axes.grid': True,
     'grid.color': '#b0b0b0',
@@ -49,8 +49,16 @@ def plot_return(returns, agent, window=100):
     ax.fill_between(range(len(returns)), rolling_mean - std, rolling_mean + std,
                     color=BAND_COLOR, alpha=0.25, linewidth=0)
 
+    # y-range follows the rolling mean band, not the raw score
+    lower, upper = (rolling_mean - std).min(), (rolling_mean + std).max()
+    if pd.notna(lower) and pd.notna(upper):
+        pad = 0.05 * (upper - lower) or 1.0
+        ax.set_ylim(lower - pad, upper + pad)
+
     ax.spines['top'].set_visible(False)
+    ax.spines['bottom'].set_visible(False)
     ax.spines['right'].set_visible(False)
+    ax.spines['left'].set_visible(False)
     ax.set_xlabel('Episode')
     ax.set_ylabel('Score')
     ax.margins(x=0)
